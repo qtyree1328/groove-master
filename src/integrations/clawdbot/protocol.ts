@@ -117,12 +117,19 @@ export interface MonitorAction {
   runId: string
   sessionKey: string
   seq: number
-  type: 'delta' | 'final' | 'aborted' | 'error' | 'tool_call' | 'tool_result'
+  type: 'start' | 'streaming' | 'complete' | 'aborted' | 'error' | 'tool_call' | 'tool_result'
   eventType: 'chat' | 'agent' | 'system'
   timestamp: number
   content?: string
   toolName?: string
   toolArgs?: unknown
+  // Metadata from lifecycle/chat events
+  startedAt?: number
+  endedAt?: number
+  duration?: number
+  inputTokens?: number
+  outputTokens?: number
+  stopReason?: string
 }
 
 // Utility functions

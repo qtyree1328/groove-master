@@ -22,14 +22,32 @@ export function sessionInfoToMonitor(info: SessionInfo): MonitorSession {
 }
 
 export function chatEventToAction(event: ChatEvent): MonitorAction {
+  // Map chat state to new action types
+  let type: MonitorAction['type'] = 'streaming'
+  if (event.state === 'final') type = 'complete'
+  else if (event.state === 'delta') type = 'streaming'
+  else if (event.state === 'aborted') type = 'aborted'
+  else if (event.state === 'error') type = 'error'
+
   const action: MonitorAction = {
     id: `${event.runId}-${event.seq}`,
     runId: event.runId,
     sessionKey: event.sessionKey,
     seq: event.seq,
-    type: event.state,
+    type,
     eventType: 'chat',
     timestamp: Date.now(),
+  }
+
+  // Extract usage/stopReason from final events
+  if (event.state === 'final') {
+    if (event.usage) {
+      action.inputTokens = event.usage.inputTokens
+      action.outputTokens = event.usage.outputTokens
+    }
+    if (event.stopReason) {
+      action.stopReason = event.stopReason
+    }
   }
 
   if (event.message) {
@@ -79,19 +97,23 @@ export function chatEventToAction(event: ChatEvent): MonitorAction {
 export function agentEventToAction(event: AgentEvent): MonitorAction {
   const data = event.data
 
-  let type: MonitorAction['type'] = 'delta'
+  let type: MonitorAction['type'] = 'streaming'
   let content: string | undefined
   let toolName: string | undefined
   let toolArgs: unknown | undefined
+  let startedAt: number | undefined
+  let endedAt: number | undefined
 
   // Handle lifecycle events
   if (event.stream === 'lifecycle') {
     if (data.phase === 'start') {
-      type = 'delta'
-      content = 'Agent run started'
+      type = 'start'
+      content = 'Run started'
+      startedAt = typeof data.startedAt === 'number' ? data.startedAt : event.ts
     } else if (data.phase === 'end') {
-      type = 'final'
-      content = 'Agent run completed'
+      type = 'complete'
+      content = 'Run completed'
+      endedAt = typeof data.endedAt === 'number' ? data.endedAt : event.ts
     }
   } else if (data.type === 'tool_use') {
     type = 'tool_call'
@@ -102,7 +124,7 @@ export function agentEventToAction(event: AgentEvent): MonitorAction {
     type = 'tool_result'
     content = String(data.content || '')
   } else if (data.type === 'text') {
-    type = 'delta'
+    type = 'streaming'
     content = String(data.text || '')
   }
 
@@ -118,6 +140,8 @@ export function agentEventToAction(event: AgentEvent): MonitorAction {
     content,
     toolName,
     toolArgs,
+    startedAt,
+    endedAt,
   }
 }
 

@@ -9,6 +9,7 @@ import {
   MessageSquare,
   MessageCircle,
   Bot,
+  Play,
 } from 'lucide-react'
 import type { MonitorAction } from '~/integrations/clawdbot'
 
@@ -33,16 +34,25 @@ const stateConfig: Record<
     bgColor: string
     iconColor: string
     animate: boolean
+    label?: string
   }
 > = {
-  delta: {
+  start: {
+    icon: Play,
+    borderColor: 'border-neon-mint',
+    bgColor: 'bg-neon-mint/10',
+    iconColor: 'text-neon-mint',
+    animate: false,
+    label: 'Run Started',
+  },
+  streaming: {
     icon: Loader2,
     borderColor: 'border-neon-cyan',
     bgColor: 'bg-neon-cyan/10',
     iconColor: 'text-neon-cyan',
     animate: true,
   },
-  final: {
+  complete: {
     icon: CheckCircle,
     borderColor: 'border-neon-mint',
     bgColor: 'bg-neon-mint/10',
@@ -55,6 +65,7 @@ const stateConfig: Record<
     bgColor: 'bg-neon-peach/10',
     iconColor: 'text-neon-peach',
     animate: false,
+    label: 'Aborted',
   },
   error: {
     icon: XCircle,
@@ -85,6 +96,15 @@ const eventTypeLabels: Record<MonitorAction['eventType'], { label: string; icon:
   system: { label: 'System', icon: MessageSquare },
 }
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  const secs = ms / 1000
+  if (secs < 60) return `${secs.toFixed(1)}s`
+  const mins = Math.floor(secs / 60)
+  const remainSecs = Math.floor(secs % 60)
+  return `${mins}m ${remainSecs}s`
+}
+
 export const ActionNode = memo(function ActionNode({
   data,
   selected,
@@ -102,13 +122,19 @@ export const ActionNode = memo(function ActionNode({
       ? JSON.stringify(data.content)
       : null
 
-  const truncatedContent = contentStr
-    ? contentStr.length > 100
-      ? contentStr.slice(0, 100) + '...'
-      : contentStr
+  // Use state label for start/aborted, otherwise content
+  const displayContent = state.label || contentStr
+
+  const truncatedContent = displayContent
+    ? displayContent.length > 100
+      ? displayContent.slice(0, 100) + '...'
+      : displayContent
     : null
 
-  const fullContent = contentStr
+  const fullContent = displayContent
+
+  // Metadata for complete nodes
+  const hasMetadata = data.type === 'complete' && (data.duration || data.inputTokens || data.outputTokens)
 
   return (
     <motion.div
@@ -144,6 +170,24 @@ export const ActionNode = memo(function ActionNode({
       <div className="font-console text-[11px] text-shell-500 mb-1.5">
         <span className="text-crab-600">&gt;</span> {formatTime(data.timestamp)}
       </div>
+
+      {/* Metadata for complete nodes */}
+      {hasMetadata && (
+        <div className="font-console text-[10px] text-shell-400 mb-1.5 flex gap-2 flex-wrap">
+          {data.duration && (
+            <span className="text-neon-cyan">{formatDuration(data.duration)}</span>
+          )}
+          {data.inputTokens && (
+            <span><span className="text-shell-500">in:</span> {data.inputTokens}</span>
+          )}
+          {data.outputTokens && (
+            <span><span className="text-shell-500">out:</span> {data.outputTokens}</span>
+          )}
+          {data.stopReason && (
+            <span className="text-neon-peach">{data.stopReason}</span>
+          )}
+        </div>
+      )}
 
       {data.toolName && (
         <div className="font-console text-[10px] text-neon-lavender mb-1.5">

@@ -138,6 +138,48 @@ function ActionGraphInner({
       sessionActions.set(key, list)
     }
 
+    // Edge styling based on action type
+    const getEdgeStyle = (action: MonitorAction) => {
+      switch (action.type) {
+        case 'start':
+          return {
+            animated: true,
+            style: { stroke: '#98ffc8', strokeDasharray: '5 5' }, // mint dashed
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#98ffc8' },
+          }
+        case 'streaming':
+          return {
+            animated: true,
+            style: { stroke: '#00ffd5' }, // cyan
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#00ffd5' },
+          }
+        case 'complete':
+          return {
+            animated: false,
+            style: { stroke: '#98ffc8' }, // mint solid
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#98ffc8' },
+          }
+        case 'error':
+          return {
+            animated: false,
+            style: { stroke: '#ef4444' }, // red
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' },
+          }
+        case 'aborted':
+          return {
+            animated: false,
+            style: { stroke: '#ffb399' }, // peach
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#ffb399' },
+          }
+        default:
+          return {
+            animated: false,
+            style: { stroke: '#52526e' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52526e' },
+          }
+      }
+    }
+
     // Connect actions in a chain per session
     for (const [sessionKey, actions] of sessionActions) {
       const sorted = [...actions].sort((a, b) => a.timestamp - b.timestamp)
@@ -145,6 +187,8 @@ function ActionGraphInner({
 
       for (let i = 0; i < sorted.length; i++) {
         const action = sorted[i]!
+        const edgeStyle = getEdgeStyle(action)
+
         if (i === 0) {
           // First action connects to session
           if (sessionNodeIds.has(sessionId)) {
@@ -152,9 +196,7 @@ function ActionGraphInner({
               id: `e-session-${action.id}`,
               source: sessionId,
               target: `action-${action.id}`,
-              animated: action.type === 'delta',
-              markerEnd: { type: MarkerType.ArrowClosed, color: '#52526e' },
-              style: { stroke: '#52526e' },
+              ...edgeStyle,
             })
           }
         } else {
@@ -164,9 +206,7 @@ function ActionGraphInner({
             id: `e-${prev.id}-${action.id}`,
             source: `action-${prev.id}`,
             target: `action-${action.id}`,
-            animated: action.type === 'delta',
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#52526e' },
-            style: { stroke: '#52526e' },
+            ...edgeStyle,
           })
         }
       }

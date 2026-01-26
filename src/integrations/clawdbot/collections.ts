@@ -31,7 +31,11 @@ export function upsertSession(session: MonitorSession) {
 }
 
 // Helper to add or update action
-// For deltas, we aggregate into a single "streaming" action per runId
+// Aggregation strategy per run:
+// - start: one node per runId (appears immediately)
+// - streaming: aggregate all deltas into one node (content updates)
+// - complete: updates streaming node with final state & metadata
+// - tool_call/tool_result: separate nodes
 export function addAction(action: MonitorAction) {
   // Learn runId → sessionKey mapping from actions with real session keys
   if (action.sessionKey && !action.sessionKey.includes('lifecycle')) {
@@ -44,14 +48,30 @@ export function addAction(action: MonitorAction) {
     sessionKey = runSessionMap.get(action.runId) || sessionKey
   }
 
-  // For deltas, use runId as the key (aggregate all deltas)
-  if (action.type === 'delta') {
+  // Handle 'start' type - create dedicated start node
+  if (action.type === 'start') {
+    const startId = `${action.runId}-start`
+    const existing = actionsCollection.state.get(startId)
+    if (!existing) {
+      actionsCollection.insert({
+        ...action,
+        id: startId,
+        sessionKey,
+      })
+    }
+    return
+  }
+
+  // For streaming, aggregate into single node per runId
+  if (action.type === 'streaming') {
     const streamingId = `${action.runId}-stream`
     const existing = actionsCollection.state.get(streamingId)
     if (existing) {
       // Append content and update sessionKey if we learned it
       actionsCollection.update(streamingId, (draft) => {
-        draft.content = (draft.content || '') + (action.content || '')
+        if (action.content) {
+          draft.content = (draft.content || '') + action.content
+        }
         draft.seq = action.seq
         draft.timestamp = action.timestamp
         if (sessionKey && sessionKey !== 'lifecycle') {
@@ -69,8 +89,8 @@ export function addAction(action: MonitorAction) {
     return
   }
 
-  // For final/error/aborted, update the streaming action's type
-  if (action.type === 'final' || action.type === 'error' || action.type === 'aborted') {
+  // For complete/error/aborted, update the streaming action
+  if (action.type === 'complete' || action.type === 'error' || action.type === 'aborted') {
     const streamingId = `${action.runId}-stream`
     const streaming = actionsCollection.state.get(streamingId)
     if (streaming) {
@@ -81,13 +101,24 @@ export function addAction(action: MonitorAction) {
         if (sessionKey && sessionKey !== 'lifecycle') {
           draft.sessionKey = sessionKey
         }
+        // Copy metadata from complete event
+        if (action.inputTokens !== undefined) draft.inputTokens = action.inputTokens
+        if (action.outputTokens !== undefined) draft.outputTokens = action.outputTokens
+        if (action.stopReason) draft.stopReason = action.stopReason
+        if (action.endedAt) draft.endedAt = action.endedAt
+        // Calculate duration if we have both timestamps
+        if (draft.startedAt && action.endedAt) {
+          draft.duration = action.endedAt - draft.startedAt
+        }
       })
       return
     }
-    // No streaming action found, create as-is
+    // No streaming action found, create as-is with complete state
+    actionsCollection.insert({ ...action, sessionKey, id: `${action.runId}-complete` })
+    return
   }
 
-  // For tool_call/tool_result or orphaned finals, add as new
+  // For tool_call/tool_result, add as separate nodes
   const existing = actionsCollection.state.get(action.id)
   if (!existing) {
     actionsCollection.insert({ ...action, sessionKey })
