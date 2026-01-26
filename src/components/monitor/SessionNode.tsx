@@ -61,7 +61,7 @@ export const SessionNode = memo(function SessionNode({
         </span>
       </div>
 
-      <div className="font-console text-[9px] text-shell-500 truncate">
+      <div className="font-console text-[11px] text-shell-500 truncate">
         <span className="text-crab-600">&gt;</span> {data.agentId}
       </div>
 

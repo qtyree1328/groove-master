@@ -122,7 +122,7 @@ export function SessionList({ sessions, selectedKey, onSelect }: SessionListProp
                   {session.agentId}
                 </span>
                 {session.isGroup && (
-                  <span className="flex items-center gap-1 px-1.5 py-0.5 bg-shell-800 border border-shell-700 rounded text-[9px] text-shell-400">
+                  <span className="flex items-center gap-1 px-1.5 py-0.5 bg-shell-800 border border-shell-700 rounded text-[11px] text-shell-400">
                     <Users size={10} />
                     group
                   </span>

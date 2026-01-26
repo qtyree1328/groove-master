@@ -141,7 +141,7 @@ export const ActionNode = memo(function ActionNode({
       </div>
 
       {/* Timestamp */}
-      <div className="font-console text-[9px] text-shell-500 mb-1.5">
+      <div className="font-console text-[11px] text-shell-500 mb-1.5">
         <span className="text-crab-600">&gt;</span> {formatTime(data.timestamp)}
       </div>
 
@@ -158,7 +158,7 @@ export const ActionNode = memo(function ActionNode({
       )}
 
       {expanded && data.toolArgs != null && (
-        <pre className="mt-2 font-console text-[9px] text-shell-500 bg-shell-950 p-2 rounded border border-shell-800 overflow-auto max-h-32">
+        <pre className="mt-2 font-console text-[11px] text-shell-500 bg-shell-950 p-2 rounded border border-shell-800 overflow-auto max-h-32">
           {JSON.stringify(data.toolArgs, null, 2) as string}
         </pre>
       )}
