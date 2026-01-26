@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -30,9 +30,17 @@ interface ActionGraphProps {
 const CRAB_NODE_ID = 'crab-origin'
 const CHASER_CRAB_ID = 'chaser-crab'
 
-const CRAB_SPEED = 4 // pixels per frame
-const ATTACK_DISTANCE = 40 // how close before attacking
-const ATTACK_CHANCE = 0.4 // 40% chance to attack when close
+// Crab behavior constants - tuned for 10fps crab-like movement
+const STEP_INTERVAL = 100 // ms between steps (matches 10fps animation)
+const STEP_SIZE = 8 // pixels per step
+const WANDER_STEP_SIZE = 5
+const ATTACK_DISTANCE = 30
+const ATTACK_CHANCE = 0.5
+const WANDER_RADIUS = 50
+const IDLE_PAUSE_MIN = 800 // min ms to pause when idle
+const IDLE_PAUSE_MAX = 3000 // max ms to pause when idle
+const WANDER_CHANCE = 0.3 // 30% chance to wander after idle pause
+const SIDEWAYS_DRIFT = 0.4 // crabs scuttle sideways
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypes: NodeTypes = {
@@ -42,6 +50,15 @@ const nodeTypes: NodeTypes = {
   chaserCrab: ChaserCrabNode as any,
 }
 
+interface CrabAI {
+  position: { x: number; y: number }
+  target: { x: number; y: number; nodeId?: string } | null
+  state: ChaserCrabState
+  facingLeft: boolean
+  lastStepTime: number
+  idleUntil: number // timestamp when idle pause ends
+}
+
 // Inner component that uses ReactFlow hooks
 function ActionGraphInner({
   sessions,
@@ -49,19 +66,24 @@ function ActionGraphInner({
   selectedSession,
   onSessionSelect,
 }: ActionGraphProps) {
-  // Chaser crab state
-  const [chaserPosition, setChaserPosition] = useState({ x: 0, y: 0 })
-  const [chaserTarget, setChaserTarget] = useState<{ x: number; y: number } | null>(null)
-  const [chaserState, setChaserState] = useState<ChaserCrabState>('idle')
-  const [facingLeft, setFacingLeft] = useState(false)
+  // Crab AI state
+  const crabRef = useRef<CrabAI>({
+    position: { x: 50, y: 50 },
+    target: null,
+    state: 'idle',
+    facingLeft: false,
+    lastStepTime: 0,
+    idleUntil: 0,
+  })
 
   const prevNodeIdsRef = useRef<Set<string>>(new Set())
+  const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   const animationFrameRef = useRef<number>(undefined)
-  const attackTimeoutRef = useRef<NodeJS.Timeout>(undefined)
+  const timeoutRef = useRef<NodeJS.Timeout>(undefined)
 
   // Filter actions for selected session, or show all if none selected
   const visibleActions = useMemo(() => {
-    if (!selectedSession) return actions.slice(-50) // Last 50 actions
+    if (!selectedSession) return actions.slice(-50)
     return actions.filter((a) => a.sessionKey === selectedSession)
   }, [actions, selectedSession])
 
@@ -69,7 +91,6 @@ function ActionGraphInner({
   const rawNodes = useMemo(() => {
     const nodes: Node[] = []
 
-    // Always add the central crab node
     const hasActivity = sessions.length > 0 || visibleActions.length > 0
     nodes.push({
       id: CRAB_NODE_ID,
@@ -78,7 +99,6 @@ function ActionGraphInner({
       data: { active: hasActivity },
     })
 
-    // Add session nodes
     const visibleSessions = selectedSession
       ? sessions.filter((s) => s.key === selectedSession)
       : sessions
@@ -92,7 +112,6 @@ function ActionGraphInner({
       })
     }
 
-    // Add action nodes
     for (const action of visibleActions) {
       nodes.push({
         id: `action-${action.id}`,
@@ -109,12 +128,10 @@ function ActionGraphInner({
   const rawEdges = useMemo(() => {
     const edges: Edge[] = []
 
-    // Get visible sessions for edge creation
     const visibleSessions = selectedSession
       ? sessions.filter((s) => s.key === selectedSession)
       : sessions
 
-    // Connect crab to each session - crab red color
     for (const session of visibleSessions) {
       edges.push({
         id: `e-crab-${session.key}`,
@@ -125,10 +142,8 @@ function ActionGraphInner({
       })
     }
 
-    // Build set of session node IDs for validation
     const sessionNodeIds = new Set(visibleSessions.map((s) => `session-${s.key}`))
 
-    // Group actions by sessionKey and sort by timestamp
     const sessionActions = new Map<string, MonitorAction[]>()
     for (const action of visibleActions) {
       const key = action.sessionKey
@@ -138,37 +153,36 @@ function ActionGraphInner({
       sessionActions.set(key, list)
     }
 
-    // Edge styling based on action type
     const getEdgeStyle = (action: MonitorAction) => {
       switch (action.type) {
         case 'start':
           return {
             animated: true,
-            style: { stroke: '#98ffc8', strokeDasharray: '5 5' }, // mint dashed
+            style: { stroke: '#98ffc8', strokeDasharray: '5 5' },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#98ffc8' },
           }
         case 'streaming':
           return {
             animated: true,
-            style: { stroke: '#00ffd5' }, // cyan
+            style: { stroke: '#00ffd5' },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#00ffd5' },
           }
         case 'complete':
           return {
             animated: false,
-            style: { stroke: '#98ffc8' }, // mint solid
+            style: { stroke: '#98ffc8' },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#98ffc8' },
           }
         case 'error':
           return {
             animated: false,
-            style: { stroke: '#ef4444' }, // red
+            style: { stroke: '#ef4444' },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' },
           }
         case 'aborted':
           return {
             animated: false,
-            style: { stroke: '#ffb399' }, // peach
+            style: { stroke: '#ffb399' },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#ffb399' },
           }
         default:
@@ -180,7 +194,6 @@ function ActionGraphInner({
       }
     }
 
-    // Connect actions in a chain per session
     for (const [sessionKey, actions] of sessionActions) {
       const sorted = [...actions].sort((a, b) => a.timestamp - b.timestamp)
       const sessionId = `session-${sessionKey}`
@@ -190,7 +203,6 @@ function ActionGraphInner({
         const edgeStyle = getEdgeStyle(action)
 
         if (i === 0) {
-          // First action connects to session
           if (sessionNodeIds.has(sessionId)) {
             edges.push({
               id: `e-session-${action.id}`,
@@ -200,7 +212,6 @@ function ActionGraphInner({
             })
           }
         } else {
-          // Subsequent actions chain to previous
           const prev = sorted[i - 1]!
           edges.push({
             id: `e-${prev.id}-${action.id}`,
@@ -217,9 +228,7 @@ function ActionGraphInner({
 
   // Apply layout
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-    // Always have at least the crab node
     if (rawNodes.length === 1) {
-      // Just the crab node, center it
       return {
         nodes: [{ ...rawNodes[0]!, position: { x: 0, y: 0 } }],
         edges: [],
@@ -234,124 +243,284 @@ function ActionGraphInner({
     })
   }, [rawNodes, rawEdges])
 
-  // Initial nodes with chaser
+  // Initial nodes with chaser (click handler added later)
   const initialNodes = useMemo(() => {
+    const crab = crabRef.current
     const chaserNode: Node = {
       id: CHASER_CRAB_ID,
       type: 'chaserCrab',
-      position: { x: 0, y: 0 },
-      data: { state: 'idle' as ChaserCrabState, facingLeft: false },
+      position: crab.position,
+      data: {
+        state: crab.state,
+        facingLeft: crab.facingLeft,
+        onClick: () => {}, // Placeholder, updated after setNodes is available
+      },
       draggable: false,
       selectable: false,
       zIndex: 1000,
     }
     return [...layoutedNodes, chaserNode]
-  }, []) // Only on mount
+  }, [])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+
+  // Handle crab click - jump animation (defined after setNodes)
+  const handleCrabClick = useCallback(() => {
+    const crab = crabRef.current
+    if (crab.state === 'attacking' || crab.state === 'jumping') return
+
+    // Remember what state to return to
+    const previousState = crab.state
+    const hadTarget = crab.target !== null
+
+    crab.state = 'jumping'
+
+    // Immediately update the node to show jump animation
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === CHASER_CRAB_ID
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                state: 'jumping',
+              },
+            }
+          : n
+      )
+    )
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => {
+      // Resume previous behavior
+      if (hadTarget && crab.target) {
+        // Still has target, go back to chasing/wandering
+        crab.state = previousState === 'wandering' ? 'wandering' : 'chasing'
+      } else {
+        crab.state = 'idle'
+        crab.idleUntil = Date.now() + IDLE_PAUSE_MIN
+      }
+
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === CHASER_CRAB_ID
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  state: crab.state,
+                },
+              }
+            : n
+        )
+      )
+    }, 400)
+  }, [setNodes])
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges)
 
-  // Detect new nodes and set them as targets for the chaser
+  // Detect new nodes and moved nodes
   useEffect(() => {
     const currentIds = new Set(layoutedNodes.map((n) => n.id))
     const prevIds = prevNodeIdsRef.current
+    const prevPositions = nodePositionsRef.current
+    const crab = crabRef.current
 
-    // Find newly added nodes (excluding the central crab node)
+    // Check for new nodes
     for (const node of layoutedNodes) {
-      if (!prevIds.has(node.id) && !node.id.includes('crab')) {
-        // New node found! Set it as target
+      if (!node.id.includes('crab')) {
         const nodeCenter = {
-          x: node.position.x + 100, // Approximate center
+          x: node.position.x + 100,
           y: node.position.y + 40,
         }
-        setChaserTarget(nodeCenter)
-        setChaserState('running')
 
-        // Clear any existing attack timeout
-        if (attackTimeoutRef.current) {
-          clearTimeout(attackTimeoutRef.current)
+        // New node - chase it
+        if (!prevIds.has(node.id)) {
+          crab.target = { ...nodeCenter, nodeId: node.id }
+          crab.state = 'chasing'
+          if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          break
         }
-        break // Only chase one new node at a time
+
+        // Existing node moved - if we were tracking it or idle, chase it
+        const prevPos = prevPositions.get(node.id)
+        if (prevPos) {
+          const moved = Math.abs(prevPos.x - node.position.x) > 5 ||
+                       Math.abs(prevPos.y - node.position.y) > 5
+          if (moved && (crab.state === 'idle' || crab.target?.nodeId === node.id)) {
+            crab.target = { ...nodeCenter, nodeId: node.id }
+            crab.state = 'chasing'
+            if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          }
+        }
+
+        prevPositions.set(node.id, { x: node.position.x, y: node.position.y })
       }
     }
 
     prevNodeIdsRef.current = currentIds
   }, [layoutedNodes])
 
-  // Animation loop for chaser crab movement - updates node directly
+  // Main animation loop - step-based crab movement at 10fps timing
   useEffect(() => {
-    if (!chaserTarget || chaserState === 'attacking') return
+    const animate = (timestamp: number) => {
+      const crab = crabRef.current
+      let needsUpdate = false
 
-    const positionRef = { ...chaserPosition }
-    let currentFacingLeft = facingLeft
+      // State machine
+      switch (crab.state) {
+        case 'idle': {
+          // Wait for idle pause to end
+          if (timestamp < crab.idleUntil) break
 
-    const animate = () => {
-      const dx = chaserTarget.x - positionRef.x
-      const dy = chaserTarget.y - positionRef.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
-
-      // Check if we're close enough
-      if (distance < ATTACK_DISTANCE) {
-        // Randomly decide to attack or go idle
-        if (Math.random() < ATTACK_CHANCE) {
-          setChaserState('attacking')
-          setNodes((nds) =>
-            nds.map((n) =>
-              n.id === CHASER_CRAB_ID
-                ? { ...n, data: { state: 'attacking', facingLeft: currentFacingLeft } }
-                : n
-            )
-          )
-          attackTimeoutRef.current = setTimeout(() => {
-            setChaserState('idle')
-            setChaserTarget(null)
-            setNodes((nds) =>
-              nds.map((n) =>
-                n.id === CHASER_CRAB_ID
-                  ? { ...n, data: { state: 'idle', facingLeft: currentFacingLeft } }
-                  : n
-              )
-            )
-          }, 400)
-        } else {
-          setChaserState('idle')
-          setChaserTarget(null)
-          setNodes((nds) =>
-            nds.map((n) =>
-              n.id === CHASER_CRAB_ID
-                ? { ...n, data: { state: 'idle', facingLeft: currentFacingLeft } }
-                : n
-            )
-          )
+          // Randomly decide to wander
+          if (Math.random() < WANDER_CHANCE) {
+            const angle = Math.random() * Math.PI * 2
+            const distance = Math.random() * WANDER_RADIUS + 20
+            crab.target = {
+              x: crab.position.x + Math.cos(angle) * distance,
+              y: crab.position.y + Math.sin(angle) * distance,
+            }
+            crab.state = 'wandering'
+            crab.lastStepTime = timestamp
+            needsUpdate = true
+          } else {
+            // Set another idle pause
+            crab.idleUntil = timestamp + IDLE_PAUSE_MIN + Math.random() * (IDLE_PAUSE_MAX - IDLE_PAUSE_MIN)
+          }
+          break
         }
-        setChaserPosition(positionRef)
-        return
+
+        case 'wandering': {
+          if (!crab.target) {
+            crab.state = 'idle'
+            crab.idleUntil = timestamp + IDLE_PAUSE_MIN + Math.random() * (IDLE_PAUSE_MAX - IDLE_PAUSE_MIN)
+            needsUpdate = true
+            break
+          }
+
+          // Only move on step intervals (10fps = 100ms)
+          if (timestamp - crab.lastStepTime < STEP_INTERVAL) break
+          crab.lastStepTime = timestamp
+
+          const dx = crab.target.x - crab.position.x
+          const dy = crab.target.y - crab.position.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < WANDER_STEP_SIZE) {
+            crab.state = 'idle'
+            crab.target = null
+            crab.idleUntil = timestamp + IDLE_PAUSE_MIN + Math.random() * (IDLE_PAUSE_MAX - IDLE_PAUSE_MIN)
+            needsUpdate = true
+            break
+          }
+
+          // Crab scuttles - mostly sideways with forward bias
+          const dirX = dx / distance
+          const dirY = dy / distance
+          // Add sideways drift perpendicular to movement direction
+          const perpX = -dirY * SIDEWAYS_DRIFT * (Math.random() > 0.5 ? 1 : -1)
+          const perpY = dirX * SIDEWAYS_DRIFT * (Math.random() > 0.5 ? 1 : -1)
+
+          const stepX = (dirX + perpX) * WANDER_STEP_SIZE
+          const stepY = (dirY + perpY) * WANDER_STEP_SIZE
+
+          if (Math.abs(stepX) > 0.5) {
+            crab.facingLeft = stepX < 0
+          }
+
+          crab.position.x += stepX
+          crab.position.y += stepY
+          needsUpdate = true
+          break
+        }
+
+        case 'chasing': {
+          if (!crab.target) {
+            crab.state = 'idle'
+            crab.idleUntil = timestamp + IDLE_PAUSE_MIN
+            needsUpdate = true
+            break
+          }
+
+          // Only move on step intervals
+          if (timestamp - crab.lastStepTime < STEP_INTERVAL) break
+          crab.lastStepTime = timestamp
+
+          // If tracking a node, update target position
+          if (crab.target.nodeId) {
+            const trackedNode = layoutedNodes.find((n) => n.id === crab.target!.nodeId)
+            if (trackedNode) {
+              crab.target.x = trackedNode.position.x + 100
+              crab.target.y = trackedNode.position.y + 40
+            }
+          }
+
+          const dx = crab.target.x - crab.position.x
+          const dy = crab.target.y - crab.position.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < ATTACK_DISTANCE) {
+            // Reached target - attack or idle
+            if (Math.random() < ATTACK_CHANCE) {
+              crab.state = 'attacking'
+              if (timeoutRef.current) clearTimeout(timeoutRef.current)
+              timeoutRef.current = setTimeout(() => {
+                crab.state = 'idle'
+                crab.target = null
+                crab.idleUntil = Date.now() + IDLE_PAUSE_MIN
+              }, 400)
+            } else {
+              crab.state = 'idle'
+              crab.target = null
+              crab.idleUntil = timestamp + IDLE_PAUSE_MIN
+            }
+            needsUpdate = true
+            break
+          }
+
+          // Crab scuttles toward target with sideways drift
+          const dirX = dx / distance
+          const dirY = dy / distance
+          const perpX = -dirY * SIDEWAYS_DRIFT * (Math.random() > 0.5 ? 1 : -1)
+          const perpY = dirX * SIDEWAYS_DRIFT * (Math.random() > 0.5 ? 1 : -1)
+
+          const stepX = (dirX + perpX) * STEP_SIZE
+          const stepY = (dirY + perpY) * STEP_SIZE
+
+          if (Math.abs(stepX) > 0.5) {
+            crab.facingLeft = stepX < 0
+          }
+
+          crab.position.x += stepX
+          crab.position.y += stepY
+          needsUpdate = true
+          break
+        }
+
+        case 'attacking':
+        case 'jumping':
+          // Time-limited states handled by timeouts
+          break
       }
 
-      // Move towards target
-      const vx = (dx / distance) * CRAB_SPEED
-      const vy = (dy / distance) * CRAB_SPEED
-
-      // Update facing direction
-      if (Math.abs(vx) > 0.1) {
-        currentFacingLeft = vx < 0
-      }
-
-      positionRef.x += vx
-      positionRef.y += vy
-
-      // Update only the chaser node
-      setNodes((nds) =>
-        nds.map((n) =>
-          n.id === CHASER_CRAB_ID
-            ? {
-                ...n,
-                position: { x: positionRef.x, y: positionRef.y },
-                data: { state: 'running', facingLeft: currentFacingLeft },
-              }
-            : n
+      // Update the node if needed
+      if (needsUpdate) {
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === CHASER_CRAB_ID
+              ? {
+                  ...n,
+                  position: { ...crab.position },
+                  data: {
+                    state: crab.state,
+                    facingLeft: crab.facingLeft,
+                    onClick: handleCrabClick,
+                  },
+                }
+              : n
+          )
         )
-      )
+      }
 
       animationFrameRef.current = requestAnimationFrame(animate)
     }
@@ -362,10 +531,8 @@ function ActionGraphInner({
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
-      setChaserPosition(positionRef)
-      setFacingLeft(currentFacingLeft)
     }
-  }, [chaserTarget, chaserState, setNodes])
+  }, [layoutedNodes, setNodes, handleCrabClick])
 
   // Update layout nodes when they change (preserve chaser)
   useEffect(() => {
@@ -374,13 +541,18 @@ function ActionGraphInner({
       if (chaserNode) {
         return [...layoutedNodes, chaserNode]
       }
+      const crab = crabRef.current
       return [
         ...layoutedNodes,
         {
           id: CHASER_CRAB_ID,
           type: 'chaserCrab',
-          position: chaserPosition,
-          data: { state: chaserState, facingLeft },
+          position: crab.position,
+          data: {
+            state: crab.state,
+            facingLeft: crab.facingLeft,
+            onClick: handleCrabClick,
+          },
           draggable: false,
           selectable: false,
           zIndex: 1000,
@@ -388,16 +560,16 @@ function ActionGraphInner({
       ]
     })
     setEdges(layoutedEdges)
-  }, [layoutedNodes, layoutedEdges, setNodes, setEdges])
+  }, [layoutedNodes, layoutedEdges, setNodes, setEdges, handleCrabClick])
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
-      if (attackTimeoutRef.current) {
-        clearTimeout(attackTimeoutRef.current)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
       }
     }
   }, [])
@@ -431,10 +603,10 @@ function ActionGraphInner({
         <Controls />
         <MiniMap
           nodeColor={(node) => {
-            if (node.type === 'crab') return '#ef4444' // crab red
-            if (node.type === 'chaserCrab') return '#ef4444' // chaser crab red
-            if (node.type === 'session') return '#98ffc8' // neon mint
-            return '#52526e' // shell
+            if (node.type === 'crab') return '#ef4444'
+            if (node.type === 'chaserCrab') return '#ef4444'
+            if (node.type === 'session') return '#98ffc8'
+            return '#52526e'
           }}
           maskColor="rgba(10, 10, 15, 0.8)"
         />
