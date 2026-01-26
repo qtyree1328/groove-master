@@ -135,7 +135,15 @@ export class ClawdbotClient {
           break
 
         case 'res':
-          this.handleResponse(msg)
+          // Check if this is the hello-ok response to our connect request
+          if (msg.ok && (msg.payload as HelloOk)?.type === 'hello-ok') {
+            if (connectTimeout) clearTimeout(connectTimeout)
+            this._connected = true
+            console.log('[clawdbot] Connected successfully!')
+            connectResolve?.(msg.payload as HelloOk)
+          } else {
+            this.handleResponse(msg)
+          }
           break
 
         case 'event':
