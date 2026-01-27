@@ -3,6 +3,7 @@ import { observable } from '@trpc/server/observable'
 import superjson from 'superjson'
 import { z } from 'zod'
 import { getClawdbotClient } from '~/integrations/clawdbot/client'
+import { getPersistenceService } from '~/integrations/clawdbot/persistence'
 import {
   parseEventFrame,
   sessionInfoToMonitor,
@@ -114,14 +115,18 @@ const clawdbotRouter = router({
     )
     .query(async ({ input }) => {
       const client = getClawdbotClient()
+      const persistence = getPersistenceService()
       if (!client.connected) {
         return { sessions: [], error: 'Not connected' }
       }
       try {
         const sessions = await client.listSessions(input)
-        return {
-          sessions: sessions.map(sessionInfoToMonitor),
+        const monitorSessions = sessions.map(sessionInfoToMonitor)
+        // Persist sessions if service is enabled
+        for (const session of monitorSessions) {
+          persistence.upsertSession(session)
         }
+        return { sessions: monitorSessions }
       } catch (error) {
         return {
           sessions: [],
@@ -137,6 +142,7 @@ const clawdbotRouter = router({
       action?: MonitorAction
     }>((emit) => {
       const client = getClawdbotClient()
+      const persistence = getPersistenceService()
 
       const unsubscribe = client.onEvent((event) => {
         // Collect raw event when log collection is enabled
@@ -161,6 +167,8 @@ const clawdbotRouter = router({
             emit.next({ type: 'session', session: parsed.session })
           }
           if (parsed.action) {
+            // Persist action if service is enabled
+            persistence.addAction(parsed.action)
             emit.next({ type: 'action', action: parsed.action })
           }
         }
@@ -170,6 +178,32 @@ const clawdbotRouter = router({
         unsubscribe()
       }
     })
+  }),
+
+  // Persistence service
+  persistenceStatus: publicProcedure.query(() => {
+    const persistence = getPersistenceService()
+    return persistence.getStatus()
+  }),
+
+  persistenceStart: publicProcedure.mutation(() => {
+    const persistence = getPersistenceService()
+    return persistence.start()
+  }),
+
+  persistenceStop: publicProcedure.mutation(() => {
+    const persistence = getPersistenceService()
+    return persistence.stop()
+  }),
+
+  persistenceHydrate: publicProcedure.query(() => {
+    const persistence = getPersistenceService()
+    return persistence.hydrate()
+  }),
+
+  persistenceClear: publicProcedure.mutation(() => {
+    const persistence = getPersistenceService()
+    return persistence.clear()
   }),
 })
 

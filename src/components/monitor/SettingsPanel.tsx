@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, X, History, Wifi, WifiOff, RefreshCw, Terminal, Download, Trash2, Database } from 'lucide-react'
+import { Settings, X, History, Wifi, WifiOff, RefreshCw, Terminal, Download, Trash2, Database, HardDrive, Play, Square } from 'lucide-react'
 
 interface SettingsPanelProps {
   connected: boolean
@@ -8,6 +8,10 @@ interface SettingsPanelProps {
   debugMode: boolean
   logCollection: boolean
   logCount: number
+  persistenceEnabled: boolean
+  persistenceStartedAt: number | null
+  persistenceSessionCount: number
+  persistenceActionCount: number
   onHistoricalModeChange: (enabled: boolean) => void
   onDebugModeChange: (enabled: boolean) => void
   onLogCollectionChange: (enabled: boolean) => void
@@ -16,6 +20,9 @@ interface SettingsPanelProps {
   onConnect: () => void
   onDisconnect: () => void
   onRefresh: () => void
+  onPersistenceStart: () => void
+  onPersistenceStop: () => void
+  onPersistenceClear: () => void
 }
 
 export function SettingsPanel({
@@ -24,6 +31,10 @@ export function SettingsPanel({
   debugMode,
   logCollection,
   logCount,
+  persistenceEnabled,
+  persistenceStartedAt,
+  persistenceSessionCount,
+  persistenceActionCount,
   onHistoricalModeChange,
   onDebugModeChange,
   onLogCollectionChange,
@@ -32,6 +43,9 @@ export function SettingsPanel({
   onConnect,
   onDisconnect,
   onRefresh,
+  onPersistenceStart,
+  onPersistenceStop,
+  onPersistenceClear,
 }: SettingsPanelProps) {
   const [open, setOpen] = useState(false)
 
@@ -168,6 +182,64 @@ export function SettingsPanel({
                     }`}
                   >
                     {debugMode ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                {/* Background Service */}
+                <div className="panel-retro p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <HardDrive size={18} className={persistenceEnabled ? 'text-neon-mint' : 'text-shell-500'} />
+                    <span className="font-display text-sm font-medium text-gray-200 uppercase tracking-wide">
+                      Background Service
+                    </span>
+                  </div>
+
+                  <p className="font-console text-[10px] text-shell-500 mb-3">
+                    <span className="text-crab-600">&gt;</span> persist data across refreshes
+                  </p>
+
+                  {persistenceEnabled && persistenceStartedAt && (
+                    <div className="font-console text-[10px] text-neon-mint mb-2">
+                      <span className="text-crab-600">&gt;</span> running since {new Date(persistenceStartedAt).toLocaleTimeString()}
+                    </div>
+                  )}
+
+                  <div className="font-console text-[10px] text-shell-400 mb-3 space-y-1">
+                    <div>
+                      <span className="text-crab-600">&gt;</span> {persistenceSessionCount} sessions
+                    </div>
+                    <div>
+                      <span className="text-crab-600">&gt;</span> {persistenceActionCount} actions
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mb-2">
+                    {persistenceEnabled ? (
+                      <button
+                        onClick={onPersistenceStop}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-display text-xs uppercase tracking-wide bg-crab-600 hover:bg-crab-500 text-white rounded-lg transition-all"
+                      >
+                        <Square size={12} />
+                        Stop
+                      </button>
+                    ) : (
+                      <button
+                        onClick={onPersistenceStart}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-display text-xs uppercase tracking-wide bg-neon-mint/20 hover:bg-neon-mint/30 text-neon-mint rounded-lg transition-all"
+                      >
+                        <Play size={12} />
+                        Start
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={onPersistenceClear}
+                    disabled={persistenceSessionCount === 0 && persistenceActionCount === 0}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 font-display text-xs uppercase tracking-wide bg-shell-800 hover:bg-crab-900/50 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 size={12} />
+                    Clear Stored Data
                   </button>
                 </div>
 

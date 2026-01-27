@@ -158,3 +158,26 @@ export function clearCollections() {
     actionsCollection.delete(action.id)
   }
 }
+
+// Hydrate collections from server persistence
+export function hydrateFromServer(
+  sessions: MonitorSession[],
+  actions: MonitorAction[]
+) {
+  // First clear existing data
+  clearCollections()
+
+  // Insert all sessions
+  for (const session of sessions) {
+    sessionsCollection.insert(session)
+  }
+
+  // Insert all actions (rebuild runSessionMap as we go)
+  for (const action of actions) {
+    // Learn runId → sessionKey mapping
+    if (action.sessionKey && !action.sessionKey.includes('lifecycle')) {
+      runSessionMap.set(action.runId, action.sessionKey)
+    }
+    actionsCollection.insert(action)
+  }
+}

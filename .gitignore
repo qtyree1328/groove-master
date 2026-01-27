@@ -34,3 +34,6 @@ src/routeTree.gen.ts
 
 documents/*
 .tanstack/tmp/*
+
+# Persistence data
+data/
