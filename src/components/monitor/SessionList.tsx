@@ -71,12 +71,24 @@ export function SessionList({
   });
 
   return (
-    <motion.div
-      className="flex flex-col h-full bg-shell-900 relative"
-      initial={false}
-      animate={{ width: collapsed ? 56 : 288 }}
-      transition={{ duration: 0.2, ease: "easeInOut" }}
-    >
+    <>
+      {/* Mobile backdrop */}
+      {!collapsed && (
+        <div 
+          className="hidden max-md:block fixed inset-0 bg-black/50 z-10"
+          onClick={onToggleCollapse}
+        />
+      )}
+      <motion.div
+        className={`flex flex-col h-full bg-shell-900 relative z-20 ${
+          !collapsed ? 'max-md:absolute max-md:left-0 max-md:top-0 max-md:bottom-0 max-md:shadow-2xl' : ''
+        }`}
+        initial={false}
+        animate={{ 
+          width: collapsed ? 48 : (typeof window !== 'undefined' && window.innerWidth < 768 ? 260 : 288)
+        }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+      >
       {/* Subtle texture */}
       <div className="absolute inset-0 texture-scanlines pointer-events-none opacity-50" />
 
@@ -245,5 +257,6 @@ export function SessionList({
         </div>
       </div>
     </motion.div>
+    </>
   );
 }

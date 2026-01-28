@@ -1,202 +1,187 @@
-import { useState, useCallback, useEffect } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
-import { Github } from 'lucide-react'
-import { CrabIdleAnimation, CrabJumpAnimation, CrabAttackAnimation } from '~/components/ani'
+import { useState, useEffect } from 'react'
 
-function XIcon({ size = 14, className }: { size?: number; className?: string }) {
+export const Route = createFileRoute('/')({
+  component: Hub,
+})
+
+interface Task {
+  description: string
+  status: 'running' | 'pending' | 'completed'
+  timestamp?: string
+}
+
+function Hub() {
+  const [time, setTime] = useState(new Date())
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [jobCount, setJobCount] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    // Load tasks
+    fetch('/api/activity/checkpoint')
+      .then(r => r.ok ? r.json() : { tasks: [] })
+      .then(data => setTasks(data.tasks || []))
+      .catch(() => {})
+    
+    // Load job count
+    fetch('/api/jobs/queue')
+      .then(r => r.ok ? r.json() : { jobs: [] })
+      .then(data => setJobCount(data.jobs?.filter((j: any) => j.status === 'pending')?.length || 0))
+      .catch(() => {})
+  }, [])
+
+  const running = tasks.filter(t => t.status === 'running')
+  const pending = tasks.filter(t => t.status === 'pending')
+
   return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z" />
-    </svg>
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      {/* Header */}
+      <header className="border-b border-gray-800 px-6 py-5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🐙</span>
+            <div>
+              <h1 className="text-lg font-semibold text-white">Command Center</h1>
+              <p className="text-xs text-gray-500">Your AI assistant hub</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-mono text-white">{time.toLocaleTimeString()}</div>
+            <div className="text-xs text-gray-500">{time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* Current Task */}
+        {running.length > 0 && (
+          <div className="mb-8 p-4 bg-green-950/30 border border-green-900/50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span className="text-xs text-green-400 font-medium">Currently Working On</span>
+            </div>
+            <p className="text-white">{running[0].description}</p>
+          </div>
+        )}
+
+        {/* Tools Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <ToolCard 
+            to="/jobs" 
+            emoji="🎯" 
+            name="Job Hunter" 
+            desc="Applications & matches"
+            badge={jobCount > 0 ? jobCount.toString() : undefined}
+          />
+          <ToolCard 
+            to="/activity" 
+            emoji="📊" 
+            name="Activity" 
+            desc="Tasks & progress"
+          />
+          <ToolCard 
+            to="/usage" 
+            emoji="📈" 
+            name="Usage" 
+            desc="Tokens & costs"
+          />
+          <ToolCard 
+            to="/projects" 
+            emoji="💡" 
+            name="Projects" 
+            desc="Ideas & plans"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Task Queue */}
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <h2 className="text-sm font-medium text-gray-400 mb-4">Task Queue ({pending.length})</h2>
+            {pending.length > 0 ? (
+              <ul className="space-y-2">
+                {pending.slice(0, 8).map((t, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5 shrink-0"></span>
+                    <span className="text-gray-300">{t.description}</span>
+                  </li>
+                ))}
+                {pending.length > 8 && (
+                  <li className="text-xs text-gray-500 pl-4">+{pending.length - 8} more</li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-gray-600 text-sm">No pending tasks</p>
+            )}
+          </div>
+
+          {/* Quick Links */}
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <h2 className="text-sm font-medium text-gray-400 mb-4">Quick Links</h2>
+            <div className="space-y-2">
+              <QuickLink href="http://localhost:18789" emoji="🦞" name="Clawdbot Dashboard" />
+              <QuickLink to="/crabwalk" emoji="🦀" name="Crabwalk" />
+              <QuickLink to="/monitor" emoji="🔌" name="Monitor" />
+              <QuickLink href="https://docs.clawd.bot" emoji="📚" name="Documentation" />
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="mt-8 flex items-center justify-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <span>Online</span>
+          </div>
+          <span>•</span>
+          <span>Next job scan: 11 PM</span>
+        </div>
+      </main>
+    </div>
   )
 }
 
-// All crab animation frames to preload
-const ALL_CRAB_FRAMES = [
-  ...Array.from({ length: 5 }, (_, i) => `/ani/crab-idle/Crab${i + 1}.png`),
-  ...Array.from({ length: 4 }, (_, i) => `/ani/crab-jump/CrabMoving${i + 1}.png`),
-  ...Array.from({ length: 4 }, (_, i) => `/ani/crab-attack/Crab_Attack${i + 1}.png`),
-]
-
-export const Route = createFileRoute('/')({
-  component: Home,
-})
-
-type CrabState = 'idle' | 'jumping' | 'attacking'
-
-function Home() {
-  const [crabState, setCrabState] = useState<CrabState>('idle')
-  const [isHovering, setIsHovering] = useState(false)
-
-  // Preload all crab animation frames on mount
-  useEffect(() => {
-    for (const src of ALL_CRAB_FRAMES) {
-      const img = new Image()
-      img.src = src
-    }
-  }, [])
-
-  const handleMouseEnter = useCallback(() => {
-    setIsHovering(true)
-    if (crabState !== 'attacking') {
-      setCrabState('jumping')
-    }
-  }, [crabState])
-
-  const handleMouseLeave = useCallback(() => {
-    setIsHovering(false)
-    if (crabState !== 'attacking') {
-      setCrabState('idle')
-    }
-  }, [crabState])
-
-  const handleClick = useCallback(() => {
-    setCrabState('attacking')
-    // Attack animation: 4 frames at 10fps = 400ms
-    setTimeout(() => {
-      setCrabState(isHovering ? 'jumping' : 'idle')
-    }, 400)
-  }, [isHovering])
-
+function ToolCard({ to, emoji, name, desc, badge }: { 
+  to: string; emoji: string; name: string; desc: string; badge?: string 
+}) {
   return (
-    <div className="min-h-screen bg-shell-950 texture-grid relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute inset-0 bg-linear-to-br from-crab-950/20 via-transparent to-shell-950" />
-      <div className="absolute top-0 left-0 w-96 h-96 bg-crab-600/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-80 h-80 bg-neon-coral/5 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+    <Link
+      to={to}
+      className="relative bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-gray-700 hover:bg-gray-900/80 transition"
+    >
+      <span className="text-2xl mb-2 block">{emoji}</span>
+      <h3 className="font-medium text-white text-sm">{name}</h3>
+      <p className="text-xs text-gray-500">{desc}</p>
+      {badge && (
+        <span className="absolute top-3 right-3 bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+          {badge}
+        </span>
+      )}
+    </Link>
+  )
+}
 
-      {/* Main content */}
-      <div className="relative flex items-center justify-center min-h-screen px-4">
-        <div className="text-center max-w-2xl">
-          {/* Interactive animated crab with glow */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="mb-8"
-          >
-            <div
-              className="relative inline-block cursor-pointer select-none"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              onClick={handleClick}
-            >
-              <div className="crab-icon-glow">
-                {crabState === 'idle' && <CrabIdleAnimation className="w-32 h-32" />}
-                {crabState === 'jumping' && <CrabJumpAnimation className="w-32 h-32" />}
-                {crabState === 'attacking' && <CrabAttackAnimation className="w-32 h-32" />}
-              </div>
-              <motion.div
-                className="absolute inset-0 flex items-center justify-center -z-10"
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <div className="w-24 h-24 rounded-full bg-crab-500/20 blur-xl" />
-              </motion.div>
-            </div>
-          </motion.div>
-
-          {/* Arcade-style headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="font-arcade text-4xl md:text-5xl text-crab-400 glow-red mb-6 leading-tight"
-          >
-            CRABWALK
-          </motion.h1>
-
-          {/* Subtitle with display font */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="font-console font-bold text-lg text-gray-400 mb-4 tracking-wide uppercase"
-          >
-            Open-Source Moltbot (Clawdbot) Companion
-          </motion.p>
-
-          {/* Console-style description */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="font-console text-sm text-shell-500 mb-10 max-w-md mx-auto"
-          >
-            <span className="text-crab-600">&gt;</span> Real-time AI agent activity monitoring<br />
-            <span className="text-crab-600">&gt;</span> Session tracking & action visualization<br />
-            <span className="text-crab-600">&gt;</span> Multi-platform gateway interface
-          </motion.div>
-
-          {/* CTA Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-          >
-            <Link to="/monitor" className="btn-retro inline-block rounded-lg font-black!">
-              Launch Monitor
-            </Link>
-          </motion.div>
-
-          {/* Decorative line */}
-          <motion.div
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="mt-16 h-px bg-linear-to-r from-transparent via-crab-700/50 to-transparent max-w-xs mx-auto"
-          />
-
-          {/* Version/status badge */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-            className="mt-6 inline-flex items-center gap-2 px-3 py-1.5 bg-shell-900/80 rounded-full"
-          >
-            <span className="w-2 h-2 rounded-full bg-neon-mint animate-pulse" />
-            <span className="font-console font-bold text-[11px] uppercase text-shell-500">
-              system online • v1.0.1
-            </span>
-          </motion.div>
-
-          {/* Social links */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.9 }}
-            className="mt-6 flex items-center justify-center gap-6 font-console text-sm"
-          >
-            <a
-              href="https://github.com/luccast/crabwalk"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 text-shell-500 hover:text-crab-400 transition-colors"
-            >
-              <Github size={16} />
-              <span>Contribute on Github</span>
-            </a>
-            <a
-              href="https://x.com/luccasveg"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 text-shell-500 hover:text-crab-400 transition-colors"
-            >
-              <XIcon size={16} />
-              <span>@luccasveg</span>
-            </a>
-          </motion.div>
-        </div>
-      </div>
-    </div>
+function QuickLink({ to, href, emoji, name }: { to?: string; href?: string; emoji: string; name: string }) {
+  const className = "flex items-center gap-3 text-sm text-gray-300 hover:text-white transition"
+  
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        <span>{emoji}</span>
+        <span>{name}</span>
+        <span className="text-gray-600 text-xs">↗</span>
+      </a>
+    )
+  }
+  
+  return (
+    <Link to={to!} className={className}>
+      <span>{emoji}</span>
+      <span>{name}</span>
+    </Link>
   )
 }
