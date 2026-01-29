@@ -253,6 +253,12 @@ function CommandCenter() {
             name="Crabwalk" 
             desc="Real-time monitor"
           />
+          <NavCard 
+            to="/sketch" 
+            icon="✏️" 
+            name="Quick Sketch" 
+            desc="Draw AOIs, export GeoJSON"
+          />
         </div>
 
         {/* Built Projects */}

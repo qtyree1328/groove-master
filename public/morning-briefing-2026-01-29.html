@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morning Briefing - January 29, 2026</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #1a1a2e;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 30px;
+      border-bottom: 3px solid #e8e8e8;
+    }
+    .date {
+      font-size: 14px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 32px;
+      color: #1a1a2e;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 16px;
+    }
+    h2 {
+      font-size: 22px;
+      color: #1a1a2e;
+      margin: 35px 0 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #4a90d9;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h3 {
+      font-size: 18px;
+      color: #2d3748;
+      margin: 25px 0 15px;
+    }
+    p { margin-bottom: 15px; color: #4a5568; }
+    ul, ol { margin-left: 25px; margin-bottom: 15px; color: #4a5568; }
+    li { margin-bottom: 8px; }
+    .highlight-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 25px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    .highlight-box h3 { color: white; margin-top: 0; }
+    .status-good { color: #38a169; font-weight: 600; }
+    .status-warn { color: #d69e2e; font-weight: 600; }
+    .status-action { color: #e53e3e; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #e8e8e8;
+    }
+    th {
+      background: #f7fafc;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    tr:hover { background: #f7fafc; }
+    .key-insight {
+      background: #fff5f5;
+      border-left: 4px solid #e53e3e;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .section-icon { font-size: 24px; }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 2px solid #e8e8e8;
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="date">Wednesday, January 29, 2026</div>
+      <h1>🌅 Morning Briefing</h1>
+      <p class="subtitle">Overnight research summary for Quintin</p>
+    </header>
+
+    <section>
+      <h2><span class="section-icon">🏥</span> Hospital Farmshed Project Review</h2>
+      
+      <div class="highlight-box">
+        <h3>Status: 85% Complete — Ready to Ship</h3>
+        <p>This project is closer to done than you might think. With ~10 hours of focused work, it could be live on GitHub Pages as a polished portfolio piece.</p>
+      </div>
+
+      <h3>What's Working</h3>
+      <ul>
+        <li><strong>13 of 14 states fully processed</strong> with complete data files</li>
+        <li><strong>Web app is functional</strong> — MapLibre GL JS map, state selector, layer controls</li>
+        <li><strong>Exceptional methodology documentation</strong> — the methods.html page is publication-quality</li>
+        <li><strong>GitHub Pages deployment configured</strong> — just needs a push</li>
+      </ul>
+
+      <h3>Critical Issues (Must Fix)</h3>
+      <table>
+        <tr>
+          <th>Issue</th>
+          <th>Status</th>
+          <th>Fix</th>
+        </tr>
+        <tr>
+          <td>Maryland data incomplete</td>
+          <td class="status-action">Broken</td>
+          <td>Run pipeline or remove from states.json</td>
+        </tr>
+        <tr>
+          <td>Maine missing from states.json</td>
+          <td class="status-warn">Data exists</td>
+          <td>Add FIPS 23 entry</td>
+        </tr>
+        <tr>
+          <td>New Jersey missing from states.json</td>
+          <td class="status-warn">Data exists</td>
+          <td>Add FIPS 34 entry</td>
+        </tr>
+        <tr>
+          <td>Rhode Island missing from states.json</td>
+          <td class="status-warn">Data exists</td>
+          <td>Add FIPS 44 entry</td>
+        </tr>
+        <tr>
+          <td>No README.md</td>
+          <td class="status-warn">Missing</td>
+          <td>Write project overview</td>
+        </tr>
+      </table>
+
+      <div class="key-insight">
+        <strong>💡 Recommendation:</strong> Ship it. The methodology is rigorous, documentation is excellent, and 13 states is substantial. Fix the JSON issues, add a README, deploy. Validation and expansion can happen iteratively.
+      </div>
+
+      <p><em>Full review saved to:</em> <code>memory/research/hospital-farmshed-review-2026-01-29.md</code></p>
+    </section>
+
+    <section>
+      <h2><span class="section-icon">🤖</span> Multi-Agent Coding Strategies</h2>
+
+      <p>Researched how to effectively use Claude Code + Codex together for parallel development.</p>
+
+      <h3>Key Patterns Discovered</h3>
+      <table>
+        <tr>
+          <th>Pattern</th>
+          <th>Use Case</th>
+        </tr>
+        <tr>
+          <td><strong>Parallel Research</strong></td>
+          <td>Multiple agents exploring different directories simultaneously</td>
+        </tr>
+        <tr>
+          <td><strong>Feature Parallelization</strong></td>
+          <td>Split feature work: Component, Styles, Tests, Types, Integration</td>
+        </tr>
+        <tr>
+          <td><strong>Scout Pattern</strong></td>
+          <td>Send an agent to explore with no intent to land code — learn from its approach</td>
+        </tr>
+        <tr>
+          <td><strong>Architect + Worker</strong></td>
+          <td>One agent plans, fresh agents implement in isolation</td>
+        </tr>
+      </table>
+
+      <h3>Tool: Claude Squad</h3>
+      <p>Terminal app that manages multiple Claude Code, Codex, Aider instances:</p>
+      <ul>
+        <li>Each task gets isolated git workspace (via worktrees)</li>
+        <li>Review changes before applying</li>
+        <li>Auto-accept mode for trusted tasks</li>
+      </ul>
+      <p><code>brew install claude-squad && cs</code></p>
+
+      <div class="key-insight">
+        <strong>💡 Key Insight (Simon Willison):</strong> "The bottleneck is human review, not agent output." Fire off parallel agents for research and maintenance while focusing on reviewing one thing at a time.
+      </div>
+
+      <p><em>Full research saved to:</em> <code>memory/research/multi-agent-delegation-2026-01-29.md</code></p>
+    </section>
+
+    <section>
+      <h2><span class="section-icon">📋</span> Suggested Actions Today</h2>
+      
+      <ol>
+        <li><strong>Quick win:</strong> Fix states.json (add Maine, NJ, RI — 5 minutes)</li>
+        <li><strong>Deploy:</strong> Push Hospital Farmshed to GitHub Pages</li>
+        <li><strong>Try:</strong> Install Claude Squad (<code>brew install claude-squad</code>)</li>
+        <li><strong>Consider:</strong> Use Scout pattern for next complex task</li>
+      </ol>
+    </section>
+
+    <div class="footer">
+      <p>Prepared overnight by Clawd 🐙</p>
+      <p>Research completed 00:16 - 00:45 EST</p>
+    </div>
+  </div>
+</body>
+</html>
