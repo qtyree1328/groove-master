@@ -158,13 +158,19 @@ function KanbanPage() {
           <div className="flex items-center gap-3">
             <span className="text-2xl">📋</span>
             <div>
-              <h1 className="text-xl font-semibold text-slate-900">Kanban</h1>
+              <h1 className="text-xl font-semibold text-slate-900">Kanban — Accountability Hub</h1>
               <p className="text-xs text-slate-500">
-                {completedToday} completed today · {stats.inProgress} in progress
+                {completedToday} completed today · {stats.inProgress} in progress · Significant work only
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link 
+              to="/activity-log" 
+              className="px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+            >
+              📜 Activity Log
+            </Link>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"

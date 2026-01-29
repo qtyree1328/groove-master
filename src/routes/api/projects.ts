@@ -5,6 +5,13 @@ import path from 'path'
 
 const PROJECTS_PATH = path.join(process.env.HOME || '', '.clawdbot/projects/projects.json')
 
+interface ChatMessage {
+  id: string
+  author: 'user' | 'ai'
+  content: string
+  timestamp: string
+}
+
 interface Project {
   id: string
   name: string
@@ -21,6 +28,7 @@ interface Project {
   plan?: string
   documentation?: string
   workshopNotes?: string[]
+  chat?: ChatMessage[]
   buildPath?: string
   previewUrl?: string
   hubIcon?: string
@@ -28,6 +36,7 @@ interface Project {
   builtAt?: string
   rejectCategory?: string
   rejectReason?: string
+  approvalComment?: string
 }
 
 interface ProjectsData {
@@ -190,6 +199,42 @@ async function handlePost({ request }: { request: Request }) {
       rejectCategory: payload.rejectCategory,
       rejectReason: payload.rejectReason,
       updatedAt: new Date().toISOString(),
+    }
+    await saveProjects(projects)
+    return Response.json({ ok: true, project: projects[idx] })
+  }
+  
+  // Add chat message
+  if (action === 'add-chat' && projectId) {
+    const idx = projects.findIndex(p => p.id === projectId)
+    if (idx === -1) return Response.json({ error: 'Not found' }, { status: 404 })
+    
+    const message: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      author: payload.author || 'user',
+      content: payload.content || '',
+      timestamp: new Date().toISOString(),
+    }
+    projects[idx].chat = [...(projects[idx].chat || []), message]
+    projects[idx].updatedAt = new Date().toISOString()
+    await saveProjects(projects)
+    return Response.json({ ok: true, project: projects[idx], message })
+  }
+  
+  // Approve idea with comment
+  if (action === 'approve' && projectId) {
+    const idx = projects.findIndex(p => p.id === projectId)
+    if (idx === -1) return Response.json({ error: 'Not found' }, { status: 404 })
+    
+    projects[idx] = {
+      ...projects[idx],
+      status: 'development',
+      approvalComment: payload.comment || '',
+      updatedAt: new Date().toISOString(),
+      overview: projects[idx].overview || '',
+      goals: projects[idx].goals || [],
+      plan: projects[idx].plan || '',
+      documentation: projects[idx].documentation || '',
     }
     await saveProjects(projects)
     return Response.json({ ok: true, project: projects[idx] })

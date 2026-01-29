@@ -214,8 +214,14 @@ function CommandCenter() {
             to="/activity" 
             icon="📋" 
             name="Kanban" 
-            desc="Task board"
+            desc="Accountability hub - significant tasks"
             highlight={running.length > 0}
+          />
+          <NavCard 
+            to="/activity-log" 
+            icon="📜" 
+            name="Activity Log" 
+            desc="Small tasks & routine work"
           />
           <NavCard 
             to="/usage" 
@@ -226,8 +232,20 @@ function CommandCenter() {
           <NavCard 
             to="/projects" 
             icon="💡" 
-            name="Projects" 
-            desc="Ideas & development"
+            name="Ideas" 
+            desc="Review project ideas"
+          />
+          <NavCard 
+            to="/builds" 
+            icon="🔨" 
+            name="Builds" 
+            desc="Active development"
+          />
+          <NavCard 
+            to="/published" 
+            icon="🚀" 
+            name="Published" 
+            desc="Live projects"
           />
           <NavCard 
             to="/keyrules" 
