@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Groove Master - Bass Trainer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #1a1008 0%, #2a1a0a 100%);
+      min-height: 100vh;
+      color: #fff;
+      font-family: 'Syne Mono', monospace;
+      overflow: hidden;
+    }
+    
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+    
+    /* Side Panel */
+    .side-panel {
+      width: 280px;
+      background: rgba(0,0,0,0.7);
+      border-right: 2px solid rgba(255,180,80,0.3);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .back-link {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .back-link:hover { color: #fb4; }
+    
+    .panel-title {
+      font-size: 1.1rem;
+      color: #fb4;
+      text-shadow: 0 0 10px rgba(255,180,80,0.5);
+    }
+    
+    .setting-group {
+      background: rgba(255,180,80,0.05);
+      border: 1px solid rgba(255,180,80,0.2);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    
+    .setting-group label {
+      display: block;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .setting-group select,
+    .setting-group input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,180,80,0.3);
+      border-radius: 6px;
+      color: #fb4;
+      font-family: 'Syne Mono', monospace;
+      font-size: 0.9rem;
+    }
+    
+    .setting-group select:focus,
+    .setting-group input:focus {
+      outline: none;
+      border-color: #fb4;
+      box-shadow: 0 0 10px rgba(255,180,80,0.3);
+    }
+    
+    .setting-row {
+      display: flex;
+      gap: 8px;
+    }
+    .setting-row .setting-group { flex: 1; }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #fb4;
+    }
+    .checkbox-group label {
+      margin: 0;
+      color: #fb4;
+      font-size: 0.85rem;
+    }
+    
+    .btn {
+      padding: 12px 16px;
+      font-family: 'Syne Mono', monospace;
+      font-size: 0.9rem;
+      border: 2px solid #fb4;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    
+    .btn-start {
+      background: rgba(255,180,80,0.2);
+      color: #fb4;
+    }
+    .btn-start:hover {
+      background: #fb4;
+      color: #000;
+      box-shadow: 0 0 20px rgba(255,180,80,0.5);
+    }
+    
+    .btn-pause {
+      background: rgba(100,200,255,0.2);
+      color: #6cf;
+      border-color: #6cf;
+    }
+    .btn-pause:hover {
+      background: #6cf;
+      color: #000;
+    }
+    
+    .btn-stop {
+      background: rgba(255,100,100,0.2);
+      color: #f66;
+      border-color: #f66;
+    }
+    .btn-stop:hover {
+      background: #f66;
+      color: #000;
+    }
+    
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: auto;
+    }
+    
+    .live-stats {
+      background: rgba(0,0,0,0.4);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.8rem;
+    }
+    
+    .live-stats div {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .live-stats div:last-child { margin-bottom: 0; }
+    
+    .stat-label { color: rgba(255,255,255,0.5); }
+    .stat-value { color: #fb4; }
+    .stat-value.good { color: #8f8; }
+    .stat-value.bad { color: #f66; }
+    
+    /* Main Area - Fretboard Style */
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: linear-gradient(180deg, #1a0a00 0%, #2a1508 50%, #1a0a00 100%);
+    }
+    
+    /* Time Signature Display */
+    .time-sig-display {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(0,0,0,0.6);
+      border: 2px solid rgba(255,180,80,0.4);
+      border-radius: 12px;
+      padding: 12px 20px;
+    }
+    
+    .time-sig-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #fb4;
+      line-height: 1;
+      text-shadow: 0 0 15px rgba(255,180,80,0.5);
+    }
+    
+    .time-sig-line {
+      width: 100%;
+      height: 3px;
+      background: #fb4;
+      margin: 4px 0;
+    }
+    
+    /* Beat Counter */
+    .beat-counter {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .beat-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255,180,80,0.2);
+      border: 2px solid rgba(255,180,80,0.4);
+      transition: all 0.1s;
+    }
+    
+    .beat-dot.active {
+      background: #fb4;
+      box-shadow: 0 0 15px rgba(255,180,80,0.8);
+    }
+    
+    .beat-dot.downbeat {
+      border-color: #f84;
+    }
+    .beat-dot.downbeat.active {
+      background: #f84;
+      box-shadow: 0 0 20px rgba(255,100,50,0.9);
+    }
+    
+    .track-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Metronome indicator */
+    .metronome-flash {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: transparent;
+      transition: background 0.05s;
+    }
+    
+    .metronome-flash.tick {
+      background: linear-gradient(90deg, transparent, #fb4, transparent);
+    }
+    
+    .metronome-flash.downbeat {
+      background: linear-gradient(90deg, transparent, #f84, transparent);
+      height: 6px;
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    
+    .modal-overlay.visible {
+      display: flex;
+    }
+    
+    .modal {
+      background: linear-gradient(135deg, #2a1a0a, #1a0a00);
+      border: 2px solid #fb4;
+      border-radius: 20px;
+      padding: 40px;
+      min-width: 350px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(255,180,80,0.3);
+    }
+    
+    .modal h2 {
+      font-size: 2rem;
+      color: #6cf;
+      margin-bottom: 30px;
+      text-shadow: 0 0 20px rgba(100,200,255,0.5);
+    }
+    
+    .modal-stats {
+      text-align: left;
+      margin-bottom: 30px;
+    }
+    
+    .modal-stats div {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 1.1rem;
+    }
+    
+    .modal-stats .label { color: rgba(255,255,255,0.6); }
+    .modal-stats .value { color: #fb4; font-weight: bold; }
+    .modal-stats .value.good { color: #8f8; }
+    .modal-stats .value.bad { color: #f66; }
+    
+    .modal-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+    
+    .modal .btn {
+      min-width: 120px;
+    }
+
+    /* Detected note display */
+    .detected-note {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+      color: #fb4;
+      text-shadow: 0 0 20px rgba(255,180,80,0.8);
+      background: rgba(0,0,0,0.7);
+      padding: 10px 30px;
+      border-radius: 10px;
+      border: 2px solid rgba(255,180,80,0.4);
+    }
+    
+    .detected-note.hit { color: #8f8; border-color: #8f8; }
+    .detected-note.miss { color: #f66; border-color: #f66; }
+
+    @media (max-width: 700px) {
+      .app { flex-direction: column; }
+      .side-panel {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-right: none;
+        border-bottom: 2px solid rgba(255,180,80,0.3);
+        padding: 10px;
+        gap: 8px;
+      }
+      .setting-group { flex: 1; min-width: 120px; padding: 8px; }
+      .controls { flex-direction: row; flex-wrap: wrap; }
+      .controls .btn { flex: 1; }
+      .time-sig-display { top: 10px; left: 10px; padding: 8px 12px; }
+      .time-sig-number { font-size: 1.8rem; }
+      .beat-counter { top: 10px; right: 10px; }
+      .beat-dot { width: 18px; height: 18px; }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+  <div class="app">
+    <div class="side-panel">
+      <div class="panel-header">
+        <a href="index.html" class="back-link">← Back</a>
+        <span class="panel-title">🎸 GROOVE MASTER</span>
+      </div>
+      
+      <div class="setting-group">
+        <label>Root Note</label>
+        <select id="root-note">
+          <option value="0">C</option>
+          <option value="1">C# / Db</option>
+          <option value="2">D</option>
+          <option value="3">D# / Eb</option>
+          <option value="4" selected>E</option>
+          <option value="5">F</option>
+          <option value="6">F# / Gb</option>
+          <option value="7">G</option>
+          <option value="8">G# / Ab</option>
+          <option value="9">A</option>
+          <option value="10">A# / Bb</option>
+          <option value="11">B</option>
+        </select>
+      </div>
+      
+      <div class="setting-group">
+        <label>Note Mode</label>
+        <select id="note-mode">
+          <option value="single">Single Note</option>
+          <option value="2-notes">2 Notes (Interval)</option>
+          <option value="3-notes">3 Notes (Triad)</option>
+          <option value="scale" selected>Scale</option>
+        </select>
+      </div>
+      
+      <div class="setting-group" id="interval-group" style="display:none;">
+        <label>Interval</label>
+        <select id="interval-select">
+          <option value="1">Minor 2nd</option>
+          <option value="2">Major 2nd</option>
+          <option value="3">Minor 3rd</option>
+          <option value="4">Major 3rd</option>
+          <option value="5" selected>Perfect 4th</option>
+          <option value="6">Tritone</option>
+          <option value="7">Perfect 5th</option>
+          <option value="8">Minor 6th</option>
+          <option value="9">Major 6th</option>
+          <option value="10">Minor 7th</option>
+          <option value="11">Major 7th</option>
+          <option value="12">Octave</option>
+        </select>
+      </div>
+      
+      <div class="setting-group" id="triad-group" style="display:none;">
+        <label>Triad Type</label>
+        <select id="triad-select">
+          <option value="major" selected>Major</option>
+          <option value="minor">Minor</option>
+          <option value="diminished">Diminished</option>
+          <option value="augmented">Augmented</option>
+          <option value="sus2">Sus2</option>
+          <option value="sus4">Sus4</option>
+          <option value="power">Power Chord</option>
+        </select>
+      </div>
+      
+      <div class="setting-group" id="scale-group">
+        <label>Scale / Mode</label>
+        <select id="scale-type">
+          <option value="major">Major (Ionian)</option>
+          <option value="minor">Natural Minor</option>
+          <option value="dorian">Dorian</option>
+          <option value="phrygian">Phrygian</option>
+          <option value="lydian">Lydian</option>
+          <option value="mixolydian">Mixolydian</option>
+          <option value="locrian">Locrian</option>
+          <option value="pentatonic-major">Pentatonic Major</option>
+          <option value="pentatonic-minor" selected>Pentatonic Minor</option>
+          <option value="blues">Blues</option>
+        </select>
+      </div>
+      
+      <div class="setting-group">
+        <label>Time Signature</label>
+        <select id="time-sig">
+          <option value="4/4" selected>4/4 (Common)</option>
+          <option value="3/4">3/4 (Waltz)</option>
+          <option value="2/4">2/4 (March)</option>
+          <option value="6/8">6/8 (Compound)</option>
+          <option value="5/4">5/4</option>
+          <option value="7/4">7/4</option>
+          <option value="9/8">9/8</option>
+          <option value="7/8">7/8</option>
+          <option value="11/8">11/8</option>
+          <option value="5/8">5/8</option>
+          <option value="12/8">12/8 (Blues)</option>
+        </select>
+      </div>
+      
+      <div class="setting-group">
+        <label>Rhythm Pattern</label>
+        <select id="rhythm-pattern">
+          <option value="8th" selected>8th Notes</option>
+          <option value="quarter">Quarter Notes</option>
+          <option value="16th">16th Notes</option>
+          <option value="triplet">Triplets</option>
+          <option value="dotted-8th">Dotted 8th + 16th</option>
+          <option value="swing">Swing 8ths</option>
+          <option value="shuffle">Shuffle</option>
+        </select>
+      </div>
+      
+      <div class="setting-row">
+        <div class="setting-group">
+          <label>BPM</label>
+          <input type="number" id="start-bpm" value="72" min="30" max="220">
+        </div>
+        <div class="setting-group">
+          <label>Accel/min</label>
+          <input type="number" id="acceleration" value="0" min="0" max="30" step="1">
+        </div>
+      </div>
+      
+      <div class="setting-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="metronome-on" checked>
+          <label for="metronome-on">🔊 Metronome</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="accent-downbeat" checked>
+          <label for="accent-downbeat">Accent Downbeat</label>
+        </div>
+      </div>
+      
+      <div class="live-stats">
+        <div><span class="stat-label">BPM</span><span class="stat-value" id="current-bpm">72</span></div>
+        <div><span class="stat-label">Beat</span><span class="stat-value" id="current-beat">1</span></div>
+        <div><span class="stat-label">Hits</span><span class="stat-value good" id="hits">0</span></div>
+        <div><span class="stat-label">Misses</span><span class="stat-value bad" id="misses">0</span></div>
+        <div><span class="stat-label">Accuracy</span><span class="stat-value" id="accuracy">--%</span></div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn btn-start" id="start-btn">▶ Start</button>
+        <button class="btn btn-pause" id="pause-btn" style="display:none;">⏸ Pause</button>
+        <button class="btn btn-stop" id="stop-btn" style="display:none;">⏹ Stop</button>
+      </div>
+    </div>
+    
+    <div class="main-area">
+      <div class="metronome-flash" id="metro-flash"></div>
+      
+      <div class="time-sig-display">
+        <span class="time-sig-number" id="ts-top">4</span>
+        <div class="time-sig-line"></div>
+        <span class="time-sig-number" id="ts-bottom">4</span>
+      </div>
+      
+      <div class="beat-counter" id="beat-counter"></div>
+      
+      <div class="track-container">
+        <canvas id="track"></canvas>
+      </div>
+      <div class="detected-note" id="detected-note">--</div>
+    </div>
+  </div>
+  
+  <div class="modal-overlay" id="pause-modal">
+    <div class="modal">
+      <h2>⏸ PAUSED</h2>
+      <div class="modal-stats">
+        <div><span class="label">Time</span><span class="value" id="modal-time">0:00</span></div>
+        <div><span class="label">Notes</span><span class="value" id="modal-total">0</span></div>
+        <div><span class="label">Hits</span><span class="value good" id="modal-hits">0</span></div>
+        <div><span class="label">Misses</span><span class="value bad" id="modal-misses">0</span></div>
+        <div><span class="label">Accuracy</span><span class="value" id="modal-accuracy">--%</span></div>
+        <div><span class="label">BPM</span><span class="value" id="modal-bpm">72</span></div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn btn-start" id="resume-btn">▶ Resume</button>
+        <button class="btn btn-stop" id="end-btn">⏹ End</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    
+    // Bass string colors (E A D G)
+    const STRING_COLORS = ['#cd853f', '#daa520', '#b8860b', '#d4af37'];
+    const FRET_COLOR = '#8b7355';
+    const NUT_COLOR = '#f5f5dc';
+    
+    const SCALES = {
+      'major': [0, 2, 4, 5, 7, 9, 11],
+      'minor': [0, 2, 3, 5, 7, 8, 10],
+      'dorian': [0, 2, 3, 5, 7, 9, 10],
+      'phrygian': [0, 1, 3, 5, 7, 8, 10],
+      'lydian': [0, 2, 4, 6, 7, 9, 11],
+      'mixolydian': [0, 2, 4, 5, 7, 9, 10],
+      'locrian': [0, 1, 3, 5, 6, 8, 10],
+      'pentatonic-major': [0, 2, 4, 7, 9],
+      'pentatonic-minor': [0, 3, 5, 7, 10],
+      'blues': [0, 3, 5, 6, 7, 10]
+    };
+    
+    const TRIADS = {
+      'major': [0, 4, 7],
+      'minor': [0, 3, 7],
+      'diminished': [0, 3, 6],
+      'augmented': [0, 4, 8],
+      'sus2': [0, 2, 7],
+      'sus4': [0, 5, 7],
+      'power': [0, 7, 12]
+    };
+    
+    const RHYTHMS = {
+      'quarter': [1],
+      '8th': [0.5, 0.5],
+      '16th': [0.25, 0.25, 0.25, 0.25],
+      'triplet': [0.333, 0.333, 0.334],
+      'dotted-8th': [0.75, 0.25],
+      'swing': [0.67, 0.33],
+      'shuffle': [0.67, 0.33]
+    };
+    
+    // Audio context for metronome
+    let audioCtx = null;
+    
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+    
+    function playClick(isDownbeat = false) {
+      if (!$('metronome-on').checked) return;
+      
+      const ctx = initAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      // Higher pitch and louder for downbeat
+      const accentDownbeat = $('accent-downbeat').checked;
+      osc.frequency.value = (isDownbeat && accentDownbeat) ? 1200 : 800;
+      gain.gain.value = (isDownbeat && accentDownbeat) ? 0.3 : 0.15;
+      
+      osc.type = 'sine';
+      
+      const now = ctx.currentTime;
+      osc.start(now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.stop(now + 0.08);
+      
+      // Visual flash
+      const flash = $('metro-flash');
+      flash.className = 'metronome-flash ' + (isDownbeat && accentDownbeat ? 'downbeat' : 'tick');
+      setTimeout(() => flash.className = 'metronome-flash', 80);
+    }
+    
+    let state = {
+      running: false,
+      paused: false,
+      startTime: 0,
+      pausedTime: 0,
+      bpm: 72,
+      baseBpm: 72,
+      acceleration: 0,
+      rootNote: 4,
+      noteMode: 'scale',
+      interval: 5,
+      triadType: 'major',
+      scaleType: 'pentatonic-minor',
+      rhythmPattern: '8th',
+      timeSig: '4/4',
+      beatsPerMeasure: 4,
+      beatUnit: 4,
+      notes: [],
+      hits: 0,
+      misses: 0,
+      lastNoteTime: 0,
+      lastBeatTime: 0,
+      scaleNotes: [],
+      currentScaleIndex: 0,
+      rhythmIndex: 0,
+      currentBeat: 1
+    };
+    
+    const canvas = $('track');
+    const ctx = canvas.getContext('2d');
+    
+    const HIT_LINE_X = 0.12;
+    const NOTE_WIDTH = 60;
+    const NOTE_HEIGHT = 40;
+    const HIT_WINDOW = 70;
+    
+    let audioContext, analyser, micStream;
+    let lastDetectedNote = null;
+    let noteHeld = false;
+    
+    function parseTimeSig(ts) {
+      const [top, bottom] = ts.split('/').map(Number);
+      return { beatsPerMeasure: top, beatUnit: bottom };
+    }
+    
+    function updateTimeSigDisplay() {
+      const { beatsPerMeasure, beatUnit } = parseTimeSig(state.timeSig);
+      $('ts-top').textContent = beatsPerMeasure;
+      $('ts-bottom').textContent = beatUnit;
+      
+      // Create beat dots
+      const container = $('beat-counter');
+      container.innerHTML = '';
+      for (let i = 0; i < beatsPerMeasure; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'beat-dot' + (i === 0 ? ' downbeat' : '');
+        dot.id = `beat-${i}`;
+        container.appendChild(dot);
+      }
+    }
+    
+    function updateBeatDisplay(beat) {
+      const { beatsPerMeasure } = parseTimeSig(state.timeSig);
+      const dots = document.querySelectorAll('.beat-dot');
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === beat - 1);
+      });
+      $('current-beat').textContent = beat + '/' + beatsPerMeasure;
+    }
+    
+    function resize() {
+      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    
+    function getNoteSequence() {
+      const root = state.rootNote;
+      const baseMidi = 40 + root;
+      const notes = [];
+      
+      switch (state.noteMode) {
+        case 'single':
+          notes.push({ midi: baseMidi, name: NOTE_NAMES[root], string: 0 });
+          notes.push({ midi: baseMidi + 12, name: NOTE_NAMES[root], string: 0 });
+          break;
+          
+        case '2-notes':
+          const int = state.interval;
+          notes.push({ midi: baseMidi, name: NOTE_NAMES[root], string: 0 });
+          notes.push({ midi: baseMidi + int, name: NOTE_NAMES[(root + int) % 12], string: Math.min(3, Math.floor(int / 5)) });
+          break;
+          
+        case '3-notes':
+          const triad = TRIADS[state.triadType];
+          triad.forEach((t, i) => {
+            notes.push({ midi: baseMidi + t, name: NOTE_NAMES[(root + t) % 12], string: Math.min(3, i) });
+          });
+          break;
+          
+        case 'scale':
+        default:
+          const intervals = SCALES[state.scaleType];
+          for (let oct = 0; oct < 2; oct++) {
+            intervals.forEach((interval, i) => {
+              const noteIdx = (interval + oct * 12);
+              notes.push({
+                midi: baseMidi + noteIdx,
+                name: NOTE_NAMES[(root + interval) % 12],
+                string: Math.min(3, Math.floor(noteIdx / 5))
+              });
+            });
+          }
+          break;
+      }
+      return notes;
+    }
+    
+    function getNextRhythmDuration() {
+      const pattern = RHYTHMS[state.rhythmPattern];
+      const duration = pattern[state.rhythmIndex];
+      state.rhythmIndex = (state.rhythmIndex + 1) % pattern.length;
+      return duration;
+    }
+    
+    function spawnNote() {
+      const scaleNote = state.scaleNotes[state.currentScaleIndex];
+      state.currentScaleIndex = (state.currentScaleIndex + 1) % state.scaleNotes.length;
+      
+      state.notes.push({
+        x: canvas.offsetWidth + NOTE_WIDTH,
+        name: scaleNote.name,
+        midi: scaleNote.midi,
+        string: scaleNote.string,
+        hit: null,
+        scored: false
+      });
+    }
+    
+    function updateBpm(elapsed) {
+      if (state.acceleration > 0) {
+        const minutesElapsed = elapsed / 60000;
+        state.bpm = Math.min(220, state.baseBpm + (state.acceleration * minutesElapsed));
+      }
+      $('current-bpm').textContent = Math.round(state.bpm);
+    }
+    
+    function updateStats() {
+      $('hits').textContent = state.hits;
+      $('misses').textContent = state.misses;
+      const total = state.hits + state.misses;
+      $('accuracy').textContent = total > 0 ? Math.round((state.hits / total) * 100) + '%' : '--%';
+    }
+    
+    function detectPitch(buffer, sampleRate) {
+      const SIZE = buffer.length;
+      let rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.01) return null;
+      
+      let bestCorrelation = 0, bestOffset = -1;
+      for (let offset = 50; offset < SIZE / 2; offset++) {
+        let correlation = 0;
+        for (let i = 0; i < SIZE / 2; i++) {
+          correlation += Math.abs(buffer[i] - buffer[i + offset]);
+        }
+        correlation = 1 - correlation / (SIZE / 2);
+        if (correlation > bestCorrelation) {
+          bestCorrelation = correlation;
+          bestOffset = offset;
+        }
+      }
+      
+      if (bestCorrelation > 0.9 && bestOffset > 0) {
+        return sampleRate / bestOffset;
+      }
+      return null;
+    }
+    
+    function freqToMidi(freq) {
+      return Math.round(12 * Math.log2(freq / 440) + 69);
+    }
+    
+    function midiToName(midi) {
+      return NOTE_NAMES[midi % 12];
+    }
+    
+    function processMic() {
+      if (!analyser || !state.running || state.paused) {
+        requestAnimationFrame(processMic);
+        return;
+      }
+      
+      const buffer = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(buffer);
+      const freq = detectPitch(buffer, audioContext.sampleRate);
+      
+      if (freq && freq > 30 && freq < 500) {
+        const midi = freqToMidi(freq);
+        const noteName = midiToName(midi);
+        
+        $('detected-note').textContent = noteName;
+        $('detected-note').className = 'detected-note';
+        
+        if (noteName !== lastDetectedNote) {
+          lastDetectedNote = noteName;
+          noteHeld = false;
+        }
+        
+        if (!noteHeld) {
+          const hitLineX = canvas.offsetWidth * HIT_LINE_X;
+          for (const note of state.notes) {
+            if (note.hit === null && !note.scored) {
+              const dist = Math.abs(note.x - hitLineX);
+              if (dist < HIT_WINDOW && note.name === noteName) {
+                note.hit = true;
+                note.scored = true;
+                state.hits++;
+                noteHeld = true;
+                $('detected-note').className = 'detected-note hit';
+                updateStats();
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        lastDetectedNote = null;
+        noteHeld = false;
+      }
+      
+      requestAnimationFrame(processMic);
+    }
+    
+    async function initMic() {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        const source = audioContext.createMediaStreamSource(micStream);
+        source.connect(analyser);
+        processMic();
+        return true;
+      } catch (e) {
+        alert('Microphone access required');
+        return false;
+      }
+    }
+    
+    function update(dt, now) {
+      const hitLineX = canvas.offsetWidth * HIT_LINE_X;
+      const speed = (state.bpm / 60) * 140;
+      
+      // Metronome - play on each beat
+      const { beatsPerMeasure, beatUnit } = parseTimeSig(state.timeSig);
+      const beatDuration = 60000 / state.bpm * (4 / beatUnit);
+      
+      if (now - state.lastBeatTime > beatDuration) {
+        const isDownbeat = state.currentBeat === 1;
+        playClick(isDownbeat);
+        updateBeatDisplay(state.currentBeat);
+        
+        state.currentBeat = (state.currentBeat % beatsPerMeasure) + 1;
+        state.lastBeatTime = now;
+      }
+      
+      // Move notes
+      for (const note of state.notes) {
+        note.x -= speed * (dt / 1000);
+        
+        if (note.hit === null && note.x < hitLineX - HIT_WINDOW) {
+          note.hit = false;
+          note.scored = true;
+          state.misses++;
+          updateStats();
+        }
+      }
+      
+      state.notes = state.notes.filter(n => n.x > -NOTE_WIDTH * 2);
+      
+      // Spawn notes
+      const noteDuration = state.nextRhythmDuration * (60000 / state.bpm);
+      
+      if (now - state.lastNoteTime > noteDuration) {
+        spawnNote();
+        state.lastNoteTime = now;
+        state.nextRhythmDuration = getNextRhythmDuration();
+      }
+    }
+    
+    function render() {
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      
+      // Fretboard background
+      const fbGradient = ctx.createLinearGradient(0, 0, 0, h);
+      fbGradient.addColorStop(0, '#3d2817');
+      fbGradient.addColorStop(0.5, '#5d3a1a');
+      fbGradient.addColorStop(1, '#3d2817');
+      ctx.fillStyle = fbGradient;
+      ctx.fillRect(0, 0, w, h);
+      
+      // Wood grain texture (subtle lines)
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < h; y += 8) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + Math.sin(y * 0.1) * 2);
+        ctx.lineTo(w, y + Math.sin(y * 0.1 + 3) * 2);
+        ctx.stroke();
+      }
+      
+      // Fret lines
+      ctx.strokeStyle = FRET_COLOR;
+      ctx.lineWidth = 3;
+      for (let x = 100; x < w; x += 120) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      
+      // Strings (4 bass strings)
+      const stringSpacing = h / 5;
+      for (let i = 0; i < 4; i++) {
+        const y = stringSpacing * (i + 1);
+        
+        // String shadow
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 4 - i * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y + 2);
+        ctx.lineTo(w, y + 2);
+        ctx.stroke();
+        
+        // String
+        ctx.strokeStyle = STRING_COLORS[i];
+        ctx.lineWidth = 3 - i * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+        
+        // String highlight
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, y - 1);
+        ctx.lineTo(w, y - 1);
+        ctx.stroke();
+      }
+      
+      // Nut (at hit line)
+      const hitLineX = w * HIT_LINE_X;
+      ctx.fillStyle = NUT_COLOR;
+      ctx.fillRect(hitLineX - 8, 0, 16, h);
+      
+      // Hit line glow
+      ctx.fillStyle = 'rgba(255,180,80,0.15)';
+      ctx.fillRect(hitLineX - HIT_WINDOW, 0, HIT_WINDOW * 2, h);
+      
+      // Draw notes on strings
+      const stringY = i => stringSpacing * (i + 1);
+      
+      for (const note of state.notes) {
+        const y = stringY(note.string);
+        
+        ctx.save();
+        ctx.translate(note.x, y);
+        
+        // Note box (like a fret marker or tablature note)
+        ctx.beginPath();
+        ctx.roundRect(-NOTE_WIDTH/2, -NOTE_HEIGHT/2, NOTE_WIDTH, NOTE_HEIGHT, 8);
+        
+        if (note.hit === true) {
+          ctx.fillStyle = 'rgba(100,255,100,0.9)';
+          ctx.strokeStyle = '#8f8';
+          ctx.shadowColor = '#8f8';
+          ctx.shadowBlur = 15;
+        } else if (note.hit === false) {
+          ctx.fillStyle = 'rgba(255,80,80,0.9)';
+          ctx.strokeStyle = '#f66';
+          ctx.shadowColor = '#f66';
+          ctx.shadowBlur = 15;
+        } else {
+          ctx.fillStyle = 'rgba(30,20,10,0.9)';
+          ctx.strokeStyle = '#fb4';
+          ctx.shadowColor = '#fb4';
+          ctx.shadowBlur = 8;
+        }
+        
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        // Note name
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px "Syne Mono"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(note.name, 0, 0);
+        
+        ctx.restore();
+      }
+      
+      // Mode info
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '12px "Syne Mono"';
+      ctx.textAlign = 'right';
+      const rootName = NOTE_NAMES[state.rootNote];
+      let modeText = rootName + ' ' + ($(`${state.noteMode === 'scale' ? 'scale-type' : state.noteMode === '3-notes' ? 'triad-select' : state.noteMode === '2-notes' ? 'interval-select' : 'note-mode'}`).selectedOptions[0]?.text || '');
+      ctx.fillText(modeText, w - 20, h - 30);
+      ctx.fillText($('rhythm-pattern').selectedOptions[0].text, w - 20, h - 12);
+    }
+    
+    let lastTime = 0;
+    function loop(time) {
+      if (!state.running) return;
+      
+      if (state.paused) {
+        requestAnimationFrame(loop);
+        return;
+      }
+      
+      const dt = lastTime ? time - lastTime : 16;
+      lastTime = time;
+      
+      const elapsed = time - state.startTime - state.pausedTime;
+      updateBpm(elapsed);
+      update(dt, time);
+      render();
+      
+      requestAnimationFrame(loop);
+    }
+    
+    async function start() {
+      if (!audioContext) {
+        const ok = await initMic();
+        if (!ok) return;
+      }
+      
+      initAudio(); // Initialize metronome audio
+      
+      const { beatsPerMeasure, beatUnit } = parseTimeSig($('time-sig').value);
+      
+      state = {
+        ...state,
+        running: true,
+        paused: false,
+        startTime: performance.now(),
+        pausedTime: 0,
+        baseBpm: parseInt($('start-bpm').value) || 72,
+        bpm: parseInt($('start-bpm').value) || 72,
+        acceleration: parseFloat($('acceleration').value) || 0,
+        rootNote: parseInt($('root-note').value),
+        noteMode: $('note-mode').value,
+        interval: parseInt($('interval-select').value),
+        triadType: $('triad-select').value,
+        scaleType: $('scale-type').value,
+        rhythmPattern: $('rhythm-pattern').value,
+        timeSig: $('time-sig').value,
+        beatsPerMeasure,
+        beatUnit,
+        scaleNotes: [],
+        currentScaleIndex: 0,
+        rhythmIndex: 0,
+        nextRhythmDuration: 0,
+        notes: [],
+        hits: 0,
+        misses: 0,
+        lastNoteTime: 0,
+        lastBeatTime: 0,
+        currentBeat: 1
+      };
+      
+      state.scaleNotes = getNoteSequence();
+      state.nextRhythmDuration = getNextRhythmDuration();
+      lastTime = 0;
+      
+      updateTimeSigDisplay();
+      updateStats();
+      
+      $('start-btn').style.display = 'none';
+      $('pause-btn').style.display = 'block';
+      $('stop-btn').style.display = 'block';
+      
+      // Disable settings
+      document.querySelectorAll('.side-panel select, .side-panel input[type=number]').forEach(el => el.disabled = true);
+      
+      requestAnimationFrame(loop);
+    }
+    
+    let pauseStart = 0;
+    function pause() {
+      state.paused = true;
+      pauseStart = performance.now();
+      
+      const elapsed = performance.now() - state.startTime - state.pausedTime;
+      const mins = Math.floor(elapsed / 60000);
+      const secs = Math.floor((elapsed % 60000) / 1000);
+      $('modal-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+      $('modal-total').textContent = state.hits + state.misses;
+      $('modal-hits').textContent = state.hits;
+      $('modal-misses').textContent = state.misses;
+      const total = state.hits + state.misses;
+      $('modal-accuracy').textContent = total > 0 ? Math.round((state.hits / total) * 100) + '%' : '--%';
+      $('modal-bpm').textContent = Math.round(state.bpm);
+      
+      $('pause-modal').classList.add('visible');
+    }
+    
+    function resume() {
+      state.pausedTime += performance.now() - pauseStart;
+      state.paused = false;
+      $('pause-modal').classList.remove('visible');
+    }
+    
+    function stop() {
+      state.running = false;
+      state.paused = false;
+      state.notes = [];
+      
+      $('pause-modal').classList.remove('visible');
+      $('start-btn').style.display = 'block';
+      $('pause-btn').style.display = 'none';
+      $('stop-btn').style.display = 'none';
+      
+      document.querySelectorAll('.side-panel select, .side-panel input[type=number]').forEach(el => el.disabled = false);
+      
+      render();
+    }
+    
+    function updateNoteModeUI() {
+      const mode = $('note-mode').value;
+      $('interval-group').style.display = mode === '2-notes' ? 'block' : 'none';
+      $('triad-group').style.display = mode === '3-notes' ? 'block' : 'none';
+      $('scale-group').style.display = mode === 'scale' ? 'block' : 'none';
+    }
+    
+    // Event listeners
+    $('start-btn').addEventListener('click', start);
+    $('pause-btn').addEventListener('click', pause);
+    $('stop-btn').addEventListener('click', stop);
+    $('resume-btn').addEventListener('click', resume);
+    $('end-btn').addEventListener('click', stop);
+    $('note-mode').addEventListener('change', updateNoteModeUI);
+    $('time-sig').addEventListener('change', updateTimeSigDisplay);
+    
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space' && state.running) {
+        e.preventDefault();
+        state.paused ? resume() : pause();
+      }
+    });
+    
+    window.addEventListener('resize', resize);
+    resize();
+    updateNoteModeUI();
+    updateTimeSigDisplay();
+    render();
+  </script>
+</body>
+</html>
