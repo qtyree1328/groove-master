@@ -669,21 +669,19 @@
       notes: [],
       hits: 0,
       misses: 0,
-      lastNoteTime: 0,
       lastBeatTime: 0,
       scaleNotes: [],
       currentScaleIndex: 0,
-      rhythmIndex: 0,
       currentBeat: 1
     };
     
     const canvas = $('track');
     const ctx = canvas.getContext('2d');
     
-    const HIT_LINE_X = 0.12;
-    const NOTE_WIDTH = 100;
-    const NOTE_HEIGHT = 60;
-    const HIT_WINDOW = 70;
+    const HIT_LINE_X = 0.45; // Center-left position
+    const NOTE_WIDTH = 60;
+    const NOTE_HEIGHT = 40;
+    const HIT_WINDOW = 50;
     
     let audioContext, analyser, micStream;
     let lastDetectedNote = null;
@@ -901,20 +899,28 @@
     }
     
     function update(dt, now) {
-      const hitLineX = canvas.offsetWidth * HIT_LINE_X;
-      const speed = (state.bpm / 60) * 140;
+      const w = canvas.offsetWidth;
+      const hitLineX = w * HIT_LINE_X;
       
-      // Metronome - play on each beat
+      // Calculate speed so notes travel from spawn to hit line in exactly one beat
       const { beatsPerMeasure, beatUnit } = parseTimeSig(state.timeSig);
       const beatDuration = 60000 / state.bpm * (4 / beatUnit);
       
-      if (now - state.lastBeatTime > beatDuration) {
+      const spawnX = w + NOTE_WIDTH / 2;
+      const travelDistance = spawnX - hitLineX;
+      const speed = travelDistance / (beatDuration / 1000); // pixels per second
+      
+      // Metronome - play on each beat
+      if (now - state.lastBeatTime >= beatDuration) {
         const isDownbeat = state.currentBeat === 1;
         playClick(isDownbeat);
         updateBeatDisplay(state.currentBeat);
         
+        // Spawn note exactly when beat happens - it will arrive at hit line on NEXT beat
+        spawnNote();
+        
         state.currentBeat = (state.currentBeat % beatsPerMeasure) + 1;
-        state.lastBeatTime = now;
+        state.lastBeatTime += beatDuration;
       }
       
       // Move notes
@@ -930,15 +936,6 @@
       }
       
       state.notes = state.notes.filter(n => n.x > -NOTE_WIDTH * 2);
-      
-      // Spawn notes
-      const noteDuration = state.nextRhythmDuration * (60000 / state.bpm);
-      
-      if (now - state.lastNoteTime > noteDuration) {
-        spawnNote();
-        state.lastNoteTime = now;
-        state.nextRhythmDuration = getNextRhythmDuration();
-      }
     }
     
     function render() {
@@ -1049,7 +1046,7 @@
         
         // Note name
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 20px "Syne Mono"';
+        ctx.font = 'bold 16px "Syne Mono"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(note.name, 0, 0);
@@ -1118,17 +1115,15 @@
         scaleNotes: [],
         currentScaleIndex: 0,
         rhythmIndex: 0,
-        nextRhythmDuration: 0,
         notes: [],
         hits: 0,
         misses: 0,
-        lastNoteTime: 0,
         lastBeatTime: 0,
         currentBeat: 1
       };
       
       state.scaleNotes = getNoteSequence();
-      state.nextRhythmDuration = getNextRhythmDuration();
+      state.lastBeatTime = performance.now();
       lastTime = 0;
       
       updateTimeSigDisplay();
