@@ -284,12 +284,6 @@ function CommandCenter() {
             name="Quick Sketch" 
             desc="Draw & export GeoJSON"
           />
-          <NavCard 
-            to="/timelapse" 
-            icon="🛰️" 
-            name="Timelapse" 
-            desc="NASA satellite timelapses"
-          />
         </div>
 
         {/* Built Projects */}
