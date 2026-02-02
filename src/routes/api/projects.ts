@@ -29,6 +29,17 @@ interface ChatMessage {
   timestamp: string
 }
 
+interface ResearchItem {
+  id: string
+  title: string
+  type: 'document' | 'data' | 'source' | 'finding' | 'benchmark'
+  content: string // Markdown content
+  source?: string
+  url?: string
+  addedAt: string
+  addedBy: 'user' | 'ai'
+}
+
 interface Project {
   id: string
   name: string
@@ -46,6 +57,7 @@ interface Project {
   documentation?: string
   workshopNotes?: string[]
   chat?: ChatMessage[]
+  research?: ResearchItem[]
   buildPath?: string
   previewUrl?: string
   hubIcon?: string
@@ -242,6 +254,57 @@ async function handlePost({ request }: { request: Request }) {
     }
     
     return Response.json({ ok: true, project: projects[idx], message })
+  }
+  
+  // Add research item
+  if (action === 'add-research' && projectId) {
+    const idx = projects.findIndex(p => p.id === projectId)
+    if (idx === -1) return Response.json({ error: 'Not found' }, { status: 404 })
+    
+    const item: ResearchItem = {
+      id: `research-${Date.now()}`,
+      title: payload.title || 'Untitled Research',
+      type: payload.type || 'document',
+      content: payload.content || '',
+      source: payload.source,
+      url: payload.url,
+      addedAt: new Date().toISOString(),
+      addedBy: payload.addedBy || 'ai',
+    }
+    projects[idx].research = [...(projects[idx].research || []), item]
+    projects[idx].updatedAt = new Date().toISOString()
+    await saveProjects(projects)
+    return Response.json({ ok: true, project: projects[idx], item })
+  }
+  
+  // Update research item
+  if (action === 'update-research' && projectId) {
+    const idx = projects.findIndex(p => p.id === projectId)
+    if (idx === -1) return Response.json({ error: 'Not found' }, { status: 404 })
+    
+    const researchIdx = (projects[idx].research || []).findIndex(r => r.id === payload.researchId)
+    if (researchIdx === -1) return Response.json({ error: 'Research not found' }, { status: 404 })
+    
+    projects[idx].research![researchIdx] = {
+      ...projects[idx].research![researchIdx],
+      ...payload,
+      id: projects[idx].research![researchIdx].id,
+      addedAt: projects[idx].research![researchIdx].addedAt,
+    }
+    projects[idx].updatedAt = new Date().toISOString()
+    await saveProjects(projects)
+    return Response.json({ ok: true, project: projects[idx] })
+  }
+  
+  // Delete research item
+  if (action === 'delete-research' && projectId) {
+    const idx = projects.findIndex(p => p.id === projectId)
+    if (idx === -1) return Response.json({ error: 'Not found' }, { status: 404 })
+    
+    projects[idx].research = (projects[idx].research || []).filter(r => r.id !== payload.researchId)
+    projects[idx].updatedAt = new Date().toISOString()
+    await saveProjects(projects)
+    return Response.json({ ok: true, project: projects[idx] })
   }
   
   // Approve idea with comment

@@ -11,10 +11,12 @@ interface ChatMessage {
 interface ResearchItem {
   id: string
   title: string
-  source: string
+  type: 'document' | 'data' | 'source' | 'finding' | 'benchmark'
+  content: string
+  source?: string
   url?: string
-  notes: string
   addedAt: string
+  addedBy: 'user' | 'ai'
 }
 
 interface Project {
@@ -45,6 +47,170 @@ export const Route = createFileRoute('/builds/$projectId')({
 
 type TabType = 'overview' | 'research' | 'plan' | 'docs' | 'chat'
 
+const TYPE_BADGES: Record<string, { icon: string; color: string; label: string }> = {
+  document: { icon: '📄', color: 'bg-blue-100 text-blue-700', label: 'Document' },
+  data: { icon: '📊', color: 'bg-green-100 text-green-700', label: 'Data' },
+  source: { icon: '🔗', color: 'bg-purple-100 text-purple-700', label: 'Source' },
+  finding: { icon: '💡', color: 'bg-amber-100 text-amber-700', label: 'Finding' },
+  benchmark: { icon: '📈', color: 'bg-cyan-100 text-cyan-700', label: 'Benchmark' },
+}
+
+// Simple markdown renderer for research docs
+function renderMarkdown(content: string): JSX.Element {
+  const lines = content.split('\n')
+  const elements: JSX.Element[] = []
+  let inCodeBlock = false
+  let codeContent: string[] = []
+  let inTable = false
+  let tableRows: string[][] = []
+  
+  lines.forEach((line, i) => {
+    // Code blocks
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        elements.push(
+          <pre key={i} className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm my-3">
+            <code>{codeContent.join('\n')}</code>
+          </pre>
+        )
+        codeContent = []
+      }
+      inCodeBlock = !inCodeBlock
+      return
+    }
+    
+    if (inCodeBlock) {
+      codeContent.push(line)
+      return
+    }
+    
+    // Tables
+    if (line.startsWith('|')) {
+      if (!inTable) inTable = true
+      const cells = line.split('|').slice(1, -1).map(c => c.trim())
+      if (!cells.every(c => c.match(/^[-:]+$/))) {
+        tableRows.push(cells)
+      }
+      return
+    } else if (inTable) {
+      elements.push(
+        <div key={i} className="overflow-x-auto my-4">
+          <table className="min-w-full text-sm border border-slate-200 rounded-lg">
+            <thead className="bg-slate-100">
+              <tr>
+                {tableRows[0]?.map((cell, j) => (
+                  <th key={j} className="px-4 py-2 text-left font-semibold border-b border-slate-200">{cell}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.slice(1).map((row, ri) => (
+                <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-4 py-2 border-b border-slate-100">{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+      tableRows = []
+      inTable = false
+    }
+    
+    // Headers
+    if (line.startsWith('# ')) {
+      elements.push(<h1 key={i} className="text-2xl font-bold text-slate-900 mt-6 mb-3">{line.slice(2)}</h1>)
+      return
+    }
+    if (line.startsWith('## ')) {
+      elements.push(<h2 key={i} className="text-xl font-bold text-slate-800 mt-5 mb-2">{line.slice(3)}</h2>)
+      return
+    }
+    if (line.startsWith('### ')) {
+      elements.push(<h3 key={i} className="text-lg font-semibold text-slate-700 mt-4 mb-2">{line.slice(4)}</h3>)
+      return
+    }
+    
+    // Horizontal rule
+    if (line.match(/^[-*_]{3,}$/)) {
+      elements.push(<hr key={i} className="my-6 border-slate-200" />)
+      return
+    }
+    
+    // List items
+    if (line.match(/^[-*] /)) {
+      elements.push(
+        <li key={i} className="ml-4 text-slate-600 my-1 list-disc list-inside">
+          {formatInline(line.slice(2))}
+        </li>
+      )
+      return
+    }
+    
+    // Numbered list
+    if (line.match(/^\d+\. /)) {
+      elements.push(
+        <li key={i} className="ml-4 text-slate-600 my-1 list-decimal list-inside">
+          {formatInline(line.replace(/^\d+\. /, ''))}
+        </li>
+      )
+      return
+    }
+    
+    // Empty line
+    if (!line.trim()) {
+      elements.push(<div key={i} className="h-3" />)
+      return
+    }
+    
+    // Regular paragraph
+    elements.push(<p key={i} className="text-slate-600 my-2">{formatInline(line)}</p>)
+  })
+  
+  // Handle trailing table
+  if (inTable && tableRows.length > 0) {
+    elements.push(
+      <div key="final-table" className="overflow-x-auto my-4">
+        <table className="min-w-full text-sm border border-slate-200 rounded-lg">
+          <thead className="bg-slate-100">
+            <tr>
+              {tableRows[0]?.map((cell, j) => (
+                <th key={j} className="px-4 py-2 text-left font-semibold border-b border-slate-200">{cell}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.slice(1).map((row, ri) => (
+              <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-4 py-2 border-b border-slate-100">{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  
+  return <>{elements}</>
+}
+
+function formatInline(text: string): JSX.Element {
+  // Bold
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  // Italic
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-sm">$1</code>')
+  // Links
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-600 hover:underline">$1</a>')
+  
+  return <span dangerouslySetInnerHTML={{ __html: text }} />
+}
+
 function ProjectDetailPage() {
   const { projectId } = useParams({ from: '/builds/$projectId' })
   const [project, setProject] = useState<Project | null>(null)
@@ -53,6 +219,8 @@ function ProjectDetailPage() {
   const [chatMessage, setChatMessage] = useState('')
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [expandedResearch, setExpandedResearch] = useState<Set<string>>(new Set())
+  const [researchFilter, setResearchFilter] = useState<string>('all')
 
   const loadProject = useCallback(async () => {
     try {
@@ -102,6 +270,15 @@ function ProjectDetailPage() {
     loadProject()
   }
 
+  const toggleResearchExpand = (id: string) => {
+    setExpandedResearch(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { 
       month: 'short', 
@@ -134,11 +311,15 @@ function ProjectDetailPage() {
 
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📋' },
-    { id: 'research', label: 'Research', icon: '🔬' },
+    { id: 'research', label: `Research${project.research?.length ? ` (${project.research.length})` : ''}`, icon: '🔬' },
     { id: 'plan', label: 'Plan', icon: '📝' },
     { id: 'docs', label: 'Docs', icon: '📚' },
     { id: 'chat', label: `Chat${project.chat?.length ? ` (${project.chat.length})` : ''}`, icon: '💬' },
   ]
+
+  const filteredResearch = project.research?.filter(r => 
+    researchFilter === 'all' || r.type === researchFilter
+  ) || []
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -176,7 +357,6 @@ function ProjectDetailPage() {
             </div>
           </div>
           
-          {/* Tech tags */}
           {project.tech && project.tech.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {project.tech.map((t, i) => (
@@ -187,7 +367,6 @@ function ProjectDetailPage() {
             </div>
           )}
 
-          {/* Tabs */}
           <nav className="flex gap-1 border-b border-slate-200 -mb-px">
             {tabs.map(tab => (
               <button
@@ -212,7 +391,6 @@ function ProjectDetailPage() {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Overview Section */}
             <section className="bg-white rounded-xl border border-slate-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">Overview</h2>
@@ -234,18 +412,8 @@ function ProjectDetailPage() {
                     placeholder="Project overview..."
                   />
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => updateField('overview', editValue)}
-                      className="px-3 py-1 bg-purple-600 text-white rounded text-sm"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditingField(null)}
-                      className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm"
-                    >
-                      Cancel
-                    </button>
+                    <button onClick={() => updateField('overview', editValue)} className="px-3 py-1 bg-purple-600 text-white rounded text-sm">Save</button>
+                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm">Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -255,7 +423,6 @@ function ProjectDetailPage() {
               )}
             </section>
 
-            {/* Goals Section */}
             <section className="bg-white rounded-xl border border-slate-200 p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Goals</h2>
               {project.goals && project.goals.length > 0 ? (
@@ -272,15 +439,12 @@ function ProjectDetailPage() {
               )}
             </section>
 
-            {/* Workshop Notes */}
             {project.workshopNotes && project.workshopNotes.length > 0 && (
               <section className="bg-white rounded-xl border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4">Workshop Notes</h2>
                 <div className="space-y-2">
                   {project.workshopNotes.map((note, i) => (
-                    <p key={i} className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
-                      {note}
-                    </p>
+                    <p key={i} className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">{note}</p>
                   ))}
                 </div>
               </section>
@@ -288,33 +452,94 @@ function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Research Tab */}
+        {/* Research Tab - Enhanced */}
         {activeTab === 'research' && (
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Research & Data</h2>
-            {project.research && project.research.length > 0 ? (
+          <div className="space-y-4">
+            {/* Filter bar */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Filter:</span>
+                <select 
+                  value={researchFilter}
+                  onChange={(e) => setResearchFilter(e.target.value)}
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-1.5"
+                >
+                  <option value="all">All Types</option>
+                  <option value="document">📄 Documents</option>
+                  <option value="benchmark">📈 Benchmarks</option>
+                  <option value="finding">💡 Findings</option>
+                  <option value="data">📊 Data</option>
+                  <option value="source">🔗 Sources</option>
+                </select>
+              </div>
+              <div className="text-sm text-slate-500">
+                {filteredResearch.length} item{filteredResearch.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            {/* Research items */}
+            {filteredResearch.length > 0 ? (
               <div className="space-y-4">
-                {project.research.map((item) => (
-                  <div key={item.id} className="border border-slate-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-medium text-slate-900">{item.title}</h3>
-                        <p className="text-xs text-slate-500">{item.source}</p>
+                {filteredResearch.map((item) => {
+                  const isExpanded = expandedResearch.has(item.id)
+                  const badge = TYPE_BADGES[item.type] || TYPE_BADGES.document
+                  const preview = item.content.slice(0, 200)
+                  
+                  return (
+                    <div key={item.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      {/* Header - always visible */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-slate-50 transition flex items-start justify-between"
+                        onClick={() => toggleResearchExpand(item.id)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color}`}>
+                              {badge.icon} {badge.label}
+                            </span>
+                            <span className="text-xs text-slate-400">{formatDate(item.addedAt)}</span>
+                            {item.addedBy === 'ai' && <span className="text-xs">🤖</span>}
+                          </div>
+                          <h3 className="font-semibold text-slate-900">{item.title}</h3>
+                          {item.source && <p className="text-xs text-slate-500 mt-1">Source: {item.source}</p>}
+                          {!isExpanded && (
+                            <p className="text-sm text-slate-500 mt-2 line-clamp-2">{preview}...</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          {item.url && (
+                            <a 
+                              href={item.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 text-sm hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View ↗
+                            </a>
+                          )}
+                          <span className="text-slate-400 text-lg">{isExpanded ? '▼' : '▶'}</span>
+                        </div>
                       </div>
-                      {item.url && (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm">
-                          View ↗
-                        </a>
+                      
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-200 p-6 bg-slate-50">
+                          <div className="prose prose-sm max-w-none">
+                            {renderMarkdown(item.content)}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {item.notes && (
-                      <p className="mt-2 text-sm text-slate-600">{item.notes}</p>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
-              <p className="text-slate-400 italic">No research collected yet. AI will add findings here.</p>
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                <span className="text-4xl mb-4 block">🔬</span>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">No Research Yet</h3>
+                <p className="text-slate-500">Research documents, data, and findings will appear here.</p>
+              </div>
             )}
           </div>
         )}
@@ -342,18 +567,8 @@ function ProjectDetailPage() {
                   placeholder="## Phase 1&#10;- [ ] Task 1&#10;- [ ] Task 2"
                 />
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => updateField('plan', editValue)}
-                    className="px-3 py-1 bg-purple-600 text-white rounded text-sm"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingField(null)}
-                    className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm"
-                  >
-                    Cancel
-                  </button>
+                  <button onClick={() => updateField('plan', editValue)} className="px-3 py-1 bg-purple-600 text-white rounded text-sm">Save</button>
+                  <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm">Cancel</button>
                 </div>
               </div>
             ) : (
@@ -387,18 +602,8 @@ function ProjectDetailPage() {
                   placeholder="## Setup&#10;...&#10;&#10;## Usage&#10;..."
                 />
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => updateField('documentation', editValue)}
-                    className="px-3 py-1 bg-purple-600 text-white rounded text-sm"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingField(null)}
-                    className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm"
-                  >
-                    Cancel
-                  </button>
+                  <button onClick={() => updateField('documentation', editValue)} className="px-3 py-1 bg-purple-600 text-white rounded text-sm">Save</button>
+                  <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm">Cancel</button>
                 </div>
               </div>
             ) : (
@@ -414,29 +619,20 @@ function ProjectDetailPage() {
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Discussion</h2>
             
-            {/* Chat messages */}
             <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
               {project.chat && project.chat.length > 0 ? (
                 project.chat.map((msg) => (
                   <div
                     key={msg.id}
                     className={`p-4 rounded-lg ${
-                      msg.author === 'user'
-                        ? 'bg-blue-50 ml-8'
-                        : 'bg-slate-50 mr-8'
+                      msg.author === 'user' ? 'bg-blue-50 ml-8' : 'bg-slate-50 mr-8'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium text-sm">
-                        {msg.author === 'user' ? '👤 You' : '🤖 AI'}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {formatDate(msg.timestamp)}
-                      </span>
+                      <span className="font-medium text-sm">{msg.author === 'user' ? '👤 You' : '🤖 AI'}</span>
+                      <span className="text-xs text-slate-400">{formatDate(msg.timestamp)}</span>
                     </div>
-                    <div className="text-sm text-slate-700 whitespace-pre-wrap">
-                      {msg.content}
-                    </div>
+                    <div className="text-sm text-slate-700 whitespace-pre-wrap">{msg.content}</div>
                   </div>
                 ))
               ) : (
@@ -446,7 +642,6 @@ function ProjectDetailPage() {
               )}
             </div>
 
-            {/* Chat input */}
             <div className="flex gap-3">
               <input
                 type="text"

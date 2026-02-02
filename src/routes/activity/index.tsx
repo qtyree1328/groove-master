@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface Task {
   id: string
@@ -14,8 +14,8 @@ interface Task {
   completedAt?: string
   createdBy: 'user' | 'ai'
   order: number
-  result?: string // What was accomplished
-  movedToBuilds?: boolean // If it was promoted to builds
+  result?: string
+  movedToBuilds?: boolean
 }
 
 type ColumnId = 'backlog' | 'in_progress' | 'done'
@@ -53,9 +53,8 @@ function KanbanPage() {
   const [stats, setStats] = useState({ backlog: 0, inProgress: 0, done: 0, total: 0 })
   const [completedToday, setCompletedToday] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [draggedTask, setDraggedTask] = useState<Task | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const [dragOverColumn, setDragOverColumn] = useState<ColumnId | null>(null)
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ column: ColumnId; index: number } | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', category: 'other' })
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -65,7 +64,6 @@ function KanbanPage() {
       const res = await fetch('/api/tasks')
       if (res.ok) {
         const data = await res.json()
-        // Filter out 'review' status tasks (legacy) - treat as in_progress
         const filtered = (data.tasks || []).map((t: Task) => ({
           ...t,
           status: t.status === 'review' ? 'in_progress' : t.status
@@ -92,75 +90,83 @@ function KanbanPage() {
   const getColumnTasks = (columnId: ColumnId) => {
     const filtered = tasks.filter(t => t.status === columnId)
     if (columnId === 'done') {
-      // Done: sort by completedAt, most recent first
+      // Sort by completedAt (or createdAt as fallback), most recent first
       return filtered.sort((a, b) => {
-        const aDate = a.completedAt ? new Date(a.completedAt).getTime() : 0
-        const bDate = b.completedAt ? new Date(b.completedAt).getTime() : 0
+        const aDate = new Date(a.completedAt || a.createdAt).getTime()
+        const bDate = new Date(b.completedAt || b.createdAt).getTime()
         return bDate - aDate
       })
     }
-    // Queue and In Progress: sort by order
     return filtered.sort((a, b) => a.order - b.order)
   }
 
-  const handleDragStart = (e: React.DragEvent, task: Task) => {
-    setDraggedTask(task)
-    e.dataTransfer.effectAllowed = 'move'
+  const handleDragStart = (taskId: string) => {
+    setDraggedTaskId(taskId)
   }
 
-  const handleDragOver = (e: React.DragEvent, columnId: ColumnId, index?: number) => {
+  const handleDragEnd = () => {
+    setDraggedTaskId(null)
+    setDropTarget(null)
+  }
+
+  const handleDragOverTask = (e: React.DragEvent, column: ColumnId, index: number) => {
     e.preventDefault()
-    setDragOverColumn(columnId)
-    if (index !== undefined && columnId === 'backlog') {
-      setDragOverIndex(index)
+    e.stopPropagation()
+    if (column === 'backlog') {
+      setDropTarget({ column, index })
     }
   }
 
-  const handleDragLeave = () => {
-    setDragOverIndex(null)
+  const handleDragOverColumn = (e: React.DragEvent, column: ColumnId) => {
+    e.preventDefault()
+    const columnTasks = getColumnTasks(column)
+    if (column === 'backlog') {
+      setDropTarget({ column, index: columnTasks.length })
+    }
   }
 
-  const handleDrop = async (columnId: ColumnId, dropIndex?: number) => {
-    if (!draggedTask) {
-      setDraggedTask(null)
-      setDragOverIndex(null)
-      setDragOverColumn(null)
+  const handleDropOnTask = async (e: React.DragEvent, column: ColumnId, dropIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!draggedTaskId) return
+    
+    const draggedTask = tasks.find(t => t.id === draggedTaskId)
+    if (!draggedTask) return
+
+    // Moving between columns
+    if (draggedTask.status !== column) {
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'move', id: draggedTaskId, status: column })
+      })
+      loadTasks()
+      handleDragEnd()
       return
     }
 
-    const isReorderInQueue = draggedTask.status === 'backlog' && columnId === 'backlog' && dropIndex !== undefined
-    const isColumnChange = draggedTask.status !== columnId
-
-    if (!isReorderInQueue && !isColumnChange) {
-      setDraggedTask(null)
-      setDragOverIndex(null)
-      setDragOverColumn(null)
-      return
-    }
-
-    if (isReorderInQueue) {
-      // Reorder within Queue
+    // Reordering within Queue
+    if (column === 'backlog') {
       const queueTasks = getColumnTasks('backlog')
-      const oldIndex = queueTasks.findIndex(t => t.id === draggedTask.id)
+      const oldIndex = queueTasks.findIndex(t => t.id === draggedTaskId)
+      
       if (oldIndex === dropIndex || oldIndex === dropIndex - 1) {
-        setDraggedTask(null)
-        setDragOverIndex(null)
-        setDragOverColumn(null)
+        handleDragEnd()
         return
       }
 
-      // Calculate new orders
-      const newQueueTasks = [...queueTasks]
-      newQueueTasks.splice(oldIndex, 1)
+      // Build new order
+      const newOrder = queueTasks.filter(t => t.id !== draggedTaskId)
       const insertAt = dropIndex > oldIndex ? dropIndex - 1 : dropIndex
-      newQueueTasks.splice(insertAt, 0, draggedTask)
+      newOrder.splice(insertAt, 0, draggedTask)
 
-      const taskOrders = newQueueTasks.map((t, i) => ({ id: t.id, order: i }))
+      const taskOrders = newOrder.map((t, i) => ({ id: t.id, order: i }))
 
       // Optimistic update
       setTasks(prev => {
         const nonQueue = prev.filter(t => t.status !== 'backlog')
-        return [...nonQueue, ...newQueueTasks.map((t, i) => ({ ...t, order: i }))]
+        return [...nonQueue, ...newOrder.map((t, i) => ({ ...t, order: i }))]
       })
 
       await fetch('/api/tasks', {
@@ -168,23 +174,32 @@ function KanbanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reorder', taskOrders })
       })
-    } else {
-      // Move between columns
-      setTasks(prev => prev.map(t => 
-        t.id === draggedTask.id ? { ...t, status: columnId } : t
-      ))
+      
+      loadTasks()
+    }
 
+    handleDragEnd()
+  }
+
+  const handleDropOnColumn = async (e: React.DragEvent, column: ColumnId) => {
+    e.preventDefault()
+    
+    if (!draggedTaskId) return
+    
+    const draggedTask = tasks.find(t => t.id === draggedTaskId)
+    if (!draggedTask) return
+
+    // Moving between columns
+    if (draggedTask.status !== column) {
       await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'move', id: draggedTask.id, status: columnId })
+        body: JSON.stringify({ action: 'move', id: draggedTaskId, status: column })
       })
+      loadTasks()
     }
 
-    setDraggedTask(null)
-    setDragOverIndex(null)
-    setDragOverColumn(null)
-    loadTasks()
+    handleDragEnd()
   }
 
   const addTask = async () => {
@@ -231,6 +246,7 @@ function KanbanPage() {
   }
 
   const topOfQueue = getColumnTasks('backlog')[0]
+  const draggedTask = draggedTaskId ? tasks.find(t => t.id === draggedTaskId) : null
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -284,7 +300,7 @@ function KanbanPage() {
         </div>
       )}
 
-      {/* Kanban Board - 3 Columns */}
+      {/* Kanban Board */}
       <main className="max-w-[1400px] mx-auto px-6 py-6">
         {loading ? (
           <div className="text-center py-12 text-slate-500">Loading...</div>
@@ -296,11 +312,10 @@ function KanbanPage() {
                 <div
                   key={column.id}
                   className={`flex flex-col rounded-xl border border-slate-200 overflow-hidden ${
-                    dragOverColumn === column.id ? 'ring-2 ring-blue-400' : ''
+                    draggedTask && draggedTask.status !== column.id ? 'ring-2 ring-blue-300' : ''
                   }`}
-                  onDragOver={(e) => handleDragOver(e, column.id)}
-                  onDrop={() => handleDrop(column.id)}
-                  onDragLeave={handleDragLeave}
+                  onDragOver={(e) => handleDragOverColumn(e, column.id)}
+                  onDrop={(e) => handleDropOnColumn(e, column.id)}
                 >
                   {/* Column Header */}
                   <div className={`px-4 py-3 ${column.headerBg} border-b border-slate-200 flex items-center justify-between`}>
@@ -324,29 +339,29 @@ function KanbanPage() {
                   </div>
 
                   {/* Tasks */}
-                  <div className={`flex-1 overflow-y-auto p-3 space-y-2 ${column.bgColor}`}>
+                  <div className={`flex-1 overflow-y-auto p-3 space-y-1 ${column.bgColor}`}>
                     {columnTasks.map((task, index) => (
                       <div key={task.id}>
-                        {/* Drop indicator for Queue reordering */}
-                        {column.id === 'backlog' && dragOverIndex === index && draggedTask?.status === 'backlog' && (
-                          <div className="h-1 bg-blue-500 rounded-full mb-2 mx-2" />
+                        {/* Drop indicator BEFORE this task */}
+                        {column.id === 'backlog' && dropTarget?.column === 'backlog' && dropTarget.index === index && draggedTaskId && draggedTaskId !== task.id && (
+                          <div className="h-1 bg-blue-500 rounded-full mb-1 mx-1 animate-pulse" />
                         )}
+                        
                         <div
                           draggable
-                          onDragStart={(e) => handleDragStart(e, task)}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                            if (column.id === 'backlog') setDragOverIndex(index)
-                          }}
+                          onDragStart={() => handleDragStart(task.id)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => handleDragOverTask(e, column.id, index)}
+                          onDrop={(e) => handleDropOnTask(e, column.id, index)}
                           onClick={() => setEditingTask(task)}
-                          className={`bg-white rounded-lg shadow-sm border-l-4 p-3 cursor-pointer hover:shadow-md transition ${PRIORITY_COLORS[task.priority]} ${
-                            draggedTask?.id === task.id ? 'opacity-40 scale-95' : ''
+                          className={`bg-white rounded-lg shadow-sm border-l-4 p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition select-none ${PRIORITY_COLORS[task.priority]} ${
+                            draggedTaskId === task.id ? 'opacity-40 scale-95' : ''
                           }`}
                         >
-                          {/* Position indicator for Queue */}
+                          {/* Position number for Queue */}
                           {column.id === 'backlog' && (
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-amber-600">#{index + 1}</span>
+                              <span className="text-xs font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">#{index + 1}</span>
                               {task.createdBy === 'ai' && <span className="text-xs">🤖</span>}
                             </div>
                           )}
@@ -385,7 +400,7 @@ function KanbanPage() {
                             </p>
                           )}
                           
-                          {task.completedAt && column.id === 'done' && !task.result && (
+                          {task.completedAt && column.id === 'done' && (
                             <p className="text-xs text-emerald-600 mt-2">
                               ✓ {formatDate(task.completedAt)}
                             </p>
@@ -394,20 +409,9 @@ function KanbanPage() {
                       </div>
                     ))}
                     
-                    {/* Drop indicator at end of Queue */}
-                    {column.id === 'backlog' && dragOverIndex === columnTasks.length && draggedTask?.status === 'backlog' && (
-                      <div className="h-1 bg-blue-500 rounded-full mx-2" />
-                    )}
-                    
-                    {/* Final drop zone for Queue */}
-                    {column.id === 'backlog' && columnTasks.length > 0 && (
-                      <div 
-                        className="h-8"
-                        onDragOver={(e) => {
-                          e.preventDefault()
-                          setDragOverIndex(columnTasks.length)
-                        }}
-                      />
+                    {/* Drop indicator at END of queue */}
+                    {column.id === 'backlog' && dropTarget?.column === 'backlog' && dropTarget.index === columnTasks.length && draggedTaskId && (
+                      <div className="h-1 bg-blue-500 rounded-full mx-1 animate-pulse" />
                     )}
                     
                     {columnTasks.length === 0 && (
