@@ -159,7 +159,6 @@
     
     /* Fretboard */
     .fretboard-container {
-      overflow-x: auto;
       padding: 10px 0 20px;
       margin-bottom: 20px;
     }
@@ -167,21 +166,23 @@
     .fretboard {
       background: linear-gradient(180deg, #3d2817 0%, #2a1a0f 100%);
       border-radius: 12px;
-      padding: 20px;
-      min-width: 1000px;
+      padding: 15px;
       border: 2px solid rgba(255,255,255,0.1);
+      width: 100%;
+      box-sizing: border-box;
     }
     
     .fret-row {
       display: flex;
       align-items: center;
-      height: 40px;
+      height: 36px;
       position: relative;
     }
     
     .string-label {
-      width: 30px;
-      font-size: 0.9rem;
+      width: 24px;
+      min-width: 24px;
+      font-size: 0.85rem;
       color: rgba(255,255,255,0.7);
       font-weight: bold;
     }
@@ -193,18 +194,19 @@
     }
     
     .fret {
-      width: 60px;
+      flex: 1;
       height: 100%;
       border-right: 2px solid #888;
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-width: 0;
     }
     
     .fret:first-child {
       border-right: 4px solid #f5f5dc;
-      width: 30px;
+      flex: 0.5;
     }
     
     .string-line {
@@ -246,43 +248,43 @@
     
     .fret-numbers {
       display: flex;
-      padding-left: 30px;
-      margin-top: 10px;
+      padding-left: 24px;
+      margin-top: 8px;
     }
     
     .fret-num {
-      width: 60px;
+      flex: 1;
       text-align: center;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: rgba(255,255,255,0.4);
     }
     
-    .fret-num:first-child { width: 30px; }
+    .fret-num:first-child { flex: 0.5; }
     
     .fret-markers {
       display: flex;
-      padding-left: 30px;
-      margin-top: 5px;
+      padding-left: 24px;
+      margin-top: 4px;
     }
     
     .fret-marker-dot {
-      width: 60px;
+      flex: 1;
       display: flex;
       justify-content: center;
     }
     
-    .fret-marker-dot:first-child { width: 30px; }
+    .fret-marker-dot:first-child { flex: 0.5; }
     
     .fret-marker-dot span {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       background: rgba(255,255,255,0.2);
       border-radius: 50%;
     }
     
     .fret-marker-dot.twelve span {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
     }
     
     /* Controls */
