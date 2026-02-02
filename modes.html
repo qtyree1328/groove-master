@@ -202,7 +202,7 @@
       background: linear-gradient(180deg, #3d2817 0%, #2a1a0f 100%);
       border-radius: 12px;
       padding: 20px;
-      min-width: 800px;
+      min-width: 1000px;
       border: 2px solid rgba(255,255,255,0.1);
     }
     
@@ -488,7 +488,7 @@
     };
     const BASS_OPEN_STRINGS = [28, 33, 38, 43]; // E1, A1, D2, G2
     const STRING_NAMES = ['E', 'A', 'D', 'G'];
-    const FRET_COUNT = 12;
+    const FRET_COUNT = 15;
 
     // State
     let selectedKey = null;
@@ -694,7 +694,7 @@
       // Fret markers
       html += `<div class="fret-markers">`;
       for (let f = 0; f <= FRET_COUNT; f++) {
-        const hasDot = [3, 5, 7, 9, 12].includes(f);
+        const hasDot = [3, 5, 7, 9, 12, 15].includes(f);
         html += `<div class="fret-marker-dot ${f === 12 ? 'twelve' : ''}">${hasDot ? '<span></span>' : ''}</div>`;
       }
       html += `</div>`;
