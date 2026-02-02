@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Interval Trainer - Bass Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #1a0a2a 0%, #0a0a2a 100%);
+      min-height: 100vh;
+      color: #fff;
+      font-family: 'Syne Mono', monospace;
+    }
+    
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 20px;
+      border-bottom: 1px solid rgba(170,0,255,0.2);
+    }
+    
+    .back-link {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+    }
+    
+    .back-link:hover { color: #a0f; }
+    
+    h1 {
+      font-size: 1.8rem;
+      color: #a0f;
+      text-shadow: 0 0 20px rgba(170,0,255,0.5);
+    }
+    
+    .game-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .interval-display {
+      font-size: 3rem;
+      color: #a0f;
+      margin-bottom: 10px;
+    }
+    
+    .interval-name {
+      font-size: 1.5rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 30px;
+    }
+    
+    .notes-display {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      margin: 30px 0;
+    }
+    
+    .note-box {
+      width: 100px;
+      height: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.1);
+      border: 3px solid rgba(170,0,255,0.5);
+      border-radius: 15px;
+      transition: all 0.2s;
+    }
+    
+    .note-box.reference {
+      border-color: #a0f;
+      box-shadow: 0 0 20px rgba(170,0,255,0.4);
+    }
+    
+    .note-box.target {
+      border-color: rgba(255,255,255,0.3);
+      border-style: dashed;
+    }
+    
+    .note-box.correct {
+      border-color: #0f8;
+      background: rgba(0,255,136,0.2);
+      box-shadow: 0 0 20px rgba(0,255,136,0.4);
+    }
+    
+    .note-box.wrong {
+      border-color: #f66;
+      background: rgba(255,0,0,0.2);
+    }
+    
+    .note-label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+    
+    .note-value {
+      font-size: 2.5rem;
+    }
+    
+    .arrow {
+      font-size: 2rem;
+      color: rgba(255,255,255,0.3);
+    }
+    
+    .direction {
+      font-size: 1.2rem;
+      color: #fc0;
+      margin: 20px 0;
+    }
+    
+    .play-btn {
+      padding: 15px 40px;
+      background: linear-gradient(135deg, #a0f, #60a);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 1.1rem;
+      cursor: pointer;
+      margin: 20px 0;
+      transition: all 0.2s;
+    }
+    
+    .play-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(170,0,255,0.5);
+    }
+    
+    .message {
+      font-size: 1.5rem;
+      margin: 20px 0;
+      min-height: 40px;
+    }
+    
+    .message.correct { color: #0f8; }
+    .message.wrong { color: #f66; }
+    
+    .stats {
+      display: flex;
+      gap: 40px;
+      margin-top: 30px;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      color: #fc0;
+    }
+    
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.8rem;
+    }
+    
+    .setup-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    .setup-screen.hidden { display: none; }
+    
+    .setup-title {
+      font-size: 2.5rem;
+      color: #a0f;
+      margin-bottom: 20px;
+    }
+    
+    .setup-desc {
+      color: rgba(255,255,255,0.6);
+      max-width: 450px;
+      text-align: center;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+    
+    .setup-section {
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    
+    .setup-label {
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 10px;
+    }
+    
+    .option-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 400px;
+    }
+    
+    .option-btn {
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      color: #fff;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    
+    .option-btn:hover { border-color: #a0f; }
+    .option-btn.selected { background: rgba(170,0,255,0.2); border-color: #a0f; color: #a0f; }
+    
+    .start-btn {
+      margin-top: 20px;
+      padding: 18px 50px;
+      background: linear-gradient(135deg, #a0f, #60a);
+      border: none;
+      border-radius: 15px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    
+    .start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(170,0,255,0.5);
+    }
+    
+    .mic-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+    }
+    
+    .mic-status.active { color: #a0f; }
+  </style>
+</head>
+<body>
+  <div class="mic-status" id="micStatus">MIC OFF</div>
+  
+  <div class="setup-screen" id="setupScreen">
+    <h1 class="setup-title">📏 INTERVAL TRAINER</h1>
+    <p class="setup-desc">
+      Listen to the reference note, then play the requested interval above or below.
+      Train your ear to hear and play intervals instantly!
+    </p>
+    
+    <div class="setup-section">
+      <div class="setup-label">INTERVALS TO PRACTICE</div>
+      <div class="option-buttons">
+        <button class="option-btn selected" data-intervals="basic">Basic (m2, M2, m3, M3)</button>
+        <button class="option-btn" data-intervals="fifths">Fourths & Fifths</button>
+        <button class="option-btn" data-intervals="all">All Intervals</button>
+      </div>
+    </div>
+    
+    <div class="setup-section">
+      <div class="setup-label">DIRECTION</div>
+      <div class="option-buttons">
+        <button class="option-btn selected" data-dir="up">Up Only</button>
+        <button class="option-btn" data-dir="down">Down Only</button>
+        <button class="option-btn" data-dir="both">Both</button>
+      </div>
+    </div>
+    
+    <button class="start-btn" id="startBtn">START TRAINING</button>
+  </div>
+  
+  <div class="container" id="gameContainer" style="display: none;">
+    <header>
+      <a href="index.html" class="back-link">← BASS LAB</a>
+      <h1>INTERVALS</h1>
+    </header>
+    
+    <div class="game-area">
+      <div class="interval-display" id="intervalDisplay">M3</div>
+      <div class="interval-name" id="intervalName">Major Third</div>
+      <div class="direction" id="direction">↑ ABOVE</div>
+      
+      <div class="notes-display">
+        <div class="note-box reference">
+          <div class="note-label">REFERENCE</div>
+          <div class="note-value" id="refNote">E</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="note-box target" id="targetBox">
+          <div class="note-label">PLAY</div>
+          <div class="note-value" id="targetNote">?</div>
+        </div>
+      </div>
+      
+      <button class="play-btn" id="playRefBtn">🔊 PLAY REFERENCE</button>
+      
+      <div class="message" id="message"></div>
+      
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="correctCount">0</div>
+          <div class="stat-label">CORRECT</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="totalCount">0</div>
+          <div class="stat-label">TOTAL</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="streakCount">0</div>
+          <div class="stat-label">STREAK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const A4_FREQ = 440, A4_MIDI = 69;
+    
+    const INTERVALS = {
+      'm2': { semitones: 1, name: 'Minor 2nd' },
+      'M2': { semitones: 2, name: 'Major 2nd' },
+      'm3': { semitones: 3, name: 'Minor 3rd' },
+      'M3': { semitones: 4, name: 'Major 3rd' },
+      'P4': { semitones: 5, name: 'Perfect 4th' },
+      'TT': { semitones: 6, name: 'Tritone' },
+      'P5': { semitones: 7, name: 'Perfect 5th' },
+      'm6': { semitones: 8, name: 'Minor 6th' },
+      'M6': { semitones: 9, name: 'Major 6th' },
+      'm7': { semitones: 10, name: 'Minor 7th' },
+      'M7': { semitones: 11, name: 'Major 7th' },
+      'P8': { semitones: 12, name: 'Octave' }
+    };
+    
+    const INTERVAL_SETS = {
+      basic: ['m2', 'M2', 'm3', 'M3'],
+      fifths: ['P4', 'P5', 'P8'],
+      all: Object.keys(INTERVALS)
+    };
+    
+    let config = { intervals: 'basic', direction: 'up' };
+    let state = {
+      running: false,
+      refNote: null,
+      refMidi: null,
+      targetMidi: null,
+      currentInterval: null,
+      isUp: true,
+      correct: 0,
+      total: 0,
+      streak: 0,
+      answered: false
+    };
+    
+    let audioCtx;
+    let micState = { enabled: false, analyzer: null, pitchHistory: [] };
+    
+    const $ = id => document.getElementById(id);
+    
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.parentElement.querySelectorAll('.option-btn').forEach(s => s.classList.remove('selected'));
+        btn.classList.add('selected');
+        if (btn.dataset.intervals) config.intervals = btn.dataset.intervals;
+        if (btn.dataset.dir) config.direction = btn.dataset.dir;
+      });
+    });
+    
+    $('startBtn').addEventListener('click', startGame);
+    $('playRefBtn').addEventListener('click', playReference);
+    
+    async function startGame() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+        });
+        const source = audioCtx.createMediaStreamSource(stream);
+        micState.analyzer = audioCtx.createAnalyser();
+        micState.analyzer.fftSize = 4096;
+        source.connect(micState.analyzer);
+        micState.enabled = true;
+        $('micStatus').textContent = 'MIC ACTIVE';
+        $('micStatus').classList.add('active');
+      } catch (err) {
+        alert('Microphone required!');
+        return;
+      }
+      
+      state = { running: true, refNote: null, refMidi: null, targetMidi: null, currentInterval: null,
+                isUp: true, correct: 0, total: 0, streak: 0, answered: false };
+      
+      $('setupScreen').classList.add('hidden');
+      $('gameContainer').style.display = 'flex';
+      
+      nextQuestion();
+      detectLoop();
+    }
+    
+    function nextQuestion() {
+      // Pick random reference note in bass range (E1 to E3)
+      const bassNotes = [];
+      for (let midi = 28; midi <= 52; midi++) bassNotes.push(midi);
+      state.refMidi = bassNotes[Math.floor(Math.random() * bassNotes.length)];
+      state.refNote = NOTE_NAMES[state.refMidi % 12];
+      
+      // Pick random interval
+      const intervals = INTERVAL_SETS[config.intervals];
+      const intervalKey = intervals[Math.floor(Math.random() * intervals.length)];
+      state.currentInterval = INTERVALS[intervalKey];
+      
+      // Determine direction
+      if (config.direction === 'up') state.isUp = true;
+      else if (config.direction === 'down') state.isUp = false;
+      else state.isUp = Math.random() > 0.5;
+      
+      // Calculate target
+      state.targetMidi = state.isUp 
+        ? state.refMidi + state.currentInterval.semitones
+        : state.refMidi - state.currentInterval.semitones;
+      
+      state.answered = false;
+      
+      // Update display
+      $('refNote').textContent = state.refNote;
+      $('intervalDisplay').textContent = intervalKey;
+      $('intervalName').textContent = state.currentInterval.name;
+      $('direction').textContent = state.isUp ? '↑ ABOVE' : '↓ BELOW';
+      $('targetNote').textContent = '?';
+      $('targetBox').className = 'note-box target';
+      $('message').textContent = '';
+      $('message').className = 'message';
+      
+      // Auto-play reference
+      setTimeout(playReference, 500);
+    }
+    
+    function playReference() {
+      if (!audioCtx) return;
+      const freq = 440 * Math.pow(2, (state.refMidi - 69) / 12);
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1);
+    }
+    
+    function checkAnswer(playedMidi) {
+      if (state.answered) return;
+      
+      const correct = Math.abs(playedMidi - state.targetMidi) <= 1; // Allow 1 semitone tolerance
+      state.answered = true;
+      state.total++;
+      
+      const targetNote = NOTE_NAMES[state.targetMidi % 12];
+      $('targetNote').textContent = targetNote;
+      
+      if (correct) {
+        state.correct++;
+        state.streak++;
+        $('targetBox').classList.add('correct');
+        $('message').textContent = 'CORRECT! ✓';
+        $('message').className = 'message correct';
+      } else {
+        state.streak = 0;
+        $('targetBox').classList.add('wrong');
+        $('message').textContent = 'Not quite... it was ' + targetNote;
+        $('message').className = 'message wrong';
+      }
+      
+      updateStats();
+      setTimeout(nextQuestion, 2000);
+    }
+    
+    function updateStats() {
+      $('correctCount').textContent = state.correct;
+      $('totalCount').textContent = state.total;
+      $('streakCount').textContent = state.streak;
+    }
+    
+    function detectLoop() {
+      if (!state.running) return;
+      
+      if (micState.analyzer && !state.answered) {
+        const buffer = new Float32Array(micState.analyzer.fftSize);
+        micState.analyzer.getFloatTimeDomainData(buffer);
+        const result = autoCorrelate(buffer, audioCtx.sampleRate);
+        
+        if (result.frequency > 30 && result.frequency < 400 && result.confidence > 0.5) {
+          const midi = Math.round(12 * Math.log2(result.frequency / A4_FREQ) + A4_MIDI);
+          
+          if (isPitchStable(midi)) {
+            checkAnswer(midi);
+          }
+        } else {
+          micState.pitchHistory = [];
+        }
+      }
+      
+      requestAnimationFrame(detectLoop);
+    }
+    
+    function isPitchStable(midi) {
+      micState.pitchHistory.push(midi);
+      if (micState.pitchHistory.length > 3) micState.pitchHistory.shift();
+      if (micState.pitchHistory.length < 3) return false;
+      return micState.pitchHistory.every(m => Math.abs(m - micState.pitchHistory[2]) <= 1);
+    }
+    
+    function autoCorrelate(buffer, sampleRate) {
+      const SIZE = buffer.length;
+      let rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.02) return { frequency: -1, confidence: 0 };
+      
+      const yinBufferSize = Math.floor(SIZE / 2);
+      const yinBuffer = new Float32Array(yinBufferSize);
+      
+      for (let tau = 0; tau < yinBufferSize; tau++) {
+        yinBuffer[tau] = 0;
+        for (let i = 0; i < yinBufferSize; i++) {
+          const delta = buffer[i] - buffer[i + tau];
+          yinBuffer[tau] += delta * delta;
+        }
+      }
+      
+      yinBuffer[0] = 1;
+      let runningSum = 0;
+      for (let tau = 1; tau < yinBufferSize; tau++) {
+        runningSum += yinBuffer[tau];
+        yinBuffer[tau] *= tau / runningSum;
+      }
+      
+      let tauEstimate = -1;
+      for (let tau = 2; tau < yinBufferSize; tau++) {
+        if (yinBuffer[tau] < 0.4) {
+          while (tau + 1 < yinBufferSize && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
+          tauEstimate = tau;
+          break;
+        }
+      }
+      
+      if (tauEstimate === -1) return { frequency: -1, confidence: 0 };
+      
+      let betterTau = tauEstimate;
+      if (tauEstimate > 0 && tauEstimate < yinBufferSize - 1) {
+        const s0 = yinBuffer[tauEstimate - 1], s1 = yinBuffer[tauEstimate], s2 = yinBuffer[tauEstimate + 1];
+        betterTau = tauEstimate + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+      }
+      
+      return { frequency: sampleRate / betterTau, confidence: 1 - yinBuffer[tauEstimate] };
+    }
+  </script>
+</body>
+</html>

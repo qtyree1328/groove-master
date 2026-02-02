@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Scale Runner - Bass Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #1a0a0a 0%, #2a1a0a 100%);
+      min-height: 100vh;
+      color: #fff;
+      font-family: 'Syne Mono', monospace;
+      overflow: hidden;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 20px;
+      border-bottom: 1px solid rgba(255,136,0,0.2);
+    }
+    
+    .back-link {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+    }
+    
+    .back-link:hover { color: #f80; }
+    
+    h1 {
+      font-size: 1.8rem;
+      color: #f80;
+      text-shadow: 0 0 20px rgba(255,136,0,0.5);
+    }
+    
+    .game-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding-top: 20px;
+    }
+    
+    .scale-display {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .current-scale {
+      font-size: 2rem;
+      color: #f80;
+    }
+    
+    .scale-notes {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .scale-note {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.2);
+      transition: all 0.15s;
+    }
+    
+    .scale-note.active {
+      background: rgba(255,136,0,0.4);
+      border-color: #f80;
+      box-shadow: 0 0 20px rgba(255,136,0,0.5);
+      transform: scale(1.2);
+    }
+    
+    .scale-note.target {
+      border-color: #0f8;
+      animation: pulse 0.5s infinite alternate;
+    }
+    
+    .scale-note.hit {
+      background: rgba(0,255,136,0.4);
+      border-color: #0f8;
+    }
+    
+    .scale-note.wrong {
+      background: rgba(255,0,0,0.4);
+      border-color: #f00;
+    }
+    
+    @keyframes pulse {
+      from { box-shadow: 0 0 10px rgba(0,255,136,0.5); }
+      to { box-shadow: 0 0 30px rgba(0,255,136,0.8); }
+    }
+    
+    .target-area {
+      text-align: center;
+      padding: 30px;
+      margin: 20px 0;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+    }
+    
+    .target-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    
+    .target-note {
+      font-size: 5rem;
+      color: #0f8;
+      text-shadow: 0 0 30px rgba(0,255,136,0.6);
+    }
+    
+    .target-hint {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    
+    .played-note {
+      font-size: 3rem;
+      color: #f80;
+      text-align: center;
+      margin: 20px 0;
+      min-height: 60px;
+    }
+    
+    .phrase-display {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    
+    .phrase-note {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.1);
+    }
+    
+    .phrase-note.in-scale { background: rgba(0,255,136,0.3); }
+    .phrase-note.out-of-scale { background: rgba(255,0,0,0.3); }
+    .phrase-note.target-hit { background: rgba(255,204,0,0.4); border: 2px solid #fc0; }
+    
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      padding: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 15px;
+      margin-top: auto;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 1.8rem;
+      color: #fc0;
+    }
+    
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.75rem;
+    }
+    
+    .message {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #0f8;
+      margin: 20px 0;
+      min-height: 40px;
+      animation: fadeIn 0.3s;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .setup-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    .setup-screen.hidden { display: none; }
+    
+    .setup-title {
+      font-size: 2.5rem;
+      color: #f80;
+      margin-bottom: 30px;
+    }
+    
+    .setup-desc {
+      color: rgba(255,255,255,0.6);
+      max-width: 500px;
+      text-align: center;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+    
+    .setup-section {
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    
+    .setup-label {
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 10px;
+    }
+    
+    .option-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .option-btn {
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 10px;
+      color: #fff;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .option-btn:hover { border-color: #f80; }
+    .option-btn.selected { background: rgba(255,136,0,0.2); border-color: #f80; color: #f80; }
+    
+    .start-btn {
+      margin-top: 20px;
+      padding: 18px 50px;
+      background: linear-gradient(135deg, #f80, #a50);
+      border: none;
+      border-radius: 15px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(255,136,0,0.5);
+    }
+    
+    .backing-controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin: 15px 0;
+    }
+    
+    .backing-btn {
+      padding: 8px 20px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      color: #fff;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    
+    .backing-btn.active { background: rgba(255,136,0,0.3); border-color: #f80; }
+    
+    .mic-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+    }
+    
+    .mic-status.active { color: #f80; }
+  </style>
+</head>
+<body>
+  <div class="mic-status" id="micStatus">MIC OFF</div>
+  
+  <div class="setup-screen" id="setupScreen">
+    <h1 class="setup-title">🎷 SCALE RUNNER</h1>
+    <p class="setup-desc">
+      Improvise freely, but hit the <strong style="color:#0f8">target notes</strong> when they appear!<br>
+      Stay in the scale to build points. Wrong notes break your streak.
+    </p>
+    
+    <div class="setup-section">
+      <div class="setup-label">SCALE</div>
+      <div class="option-buttons">
+        <button class="option-btn selected" data-scale="major">E Major</button>
+        <button class="option-btn" data-scale="minor">A Minor</button>
+        <button class="option-btn" data-scale="pentatonic">E Pentatonic</button>
+        <button class="option-btn" data-scale="blues">E Blues</button>
+      </div>
+    </div>
+    
+    <div class="setup-section">
+      <div class="setup-label">DIFFICULTY</div>
+      <div class="option-buttons">
+        <button class="option-btn" data-diff="easy">Easy (slow targets)</button>
+        <button class="option-btn selected" data-diff="medium">Medium</button>
+        <button class="option-btn" data-diff="hard">Hard (fast targets)</button>
+      </div>
+    </div>
+    
+    <button class="start-btn" id="startBtn">START IMPROVISING</button>
+  </div>
+  
+  <div class="container" id="gameContainer" style="display: none;">
+    <header>
+      <a href="index.html" class="back-link">← BASS LAB</a>
+      <h1>SCALE RUNNER</h1>
+    </header>
+    
+    <div class="game-area">
+      <div class="scale-display">
+        <div class="current-scale" id="scaleName">E MAJOR</div>
+        <div class="scale-notes" id="scaleNotes"></div>
+      </div>
+      
+      <div class="target-area">
+        <div class="target-label">HIT THIS NOTE</div>
+        <div class="target-note" id="targetNote">-</div>
+        <div class="target-hint" id="targetHint">improvise freely...</div>
+      </div>
+      
+      <div class="message" id="message"></div>
+      
+      <div class="played-note" id="playedNote">-</div>
+      
+      <div class="phrase-display" id="phraseDisplay"></div>
+      
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-value" id="scoreValue">0</div>
+          <div class="stat-label">SCORE</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="streakValue">0</div>
+          <div class="stat-label">STREAK</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="targetsValue">0/0</div>
+          <div class="stat-label">TARGETS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const A4_FREQ = 440, A4_MIDI = 69;
+    
+    const SCALES = {
+      major: { name: 'E MAJOR', root: 4, intervals: [0, 2, 4, 5, 7, 9, 11] },
+      minor: { name: 'A MINOR', root: 9, intervals: [0, 2, 3, 5, 7, 8, 10] },
+      pentatonic: { name: 'E PENTATONIC', root: 4, intervals: [0, 3, 5, 7, 10] },
+      blues: { name: 'E BLUES', root: 4, intervals: [0, 3, 5, 6, 7, 10] }
+    };
+    
+    const DIFFICULTIES = {
+      easy: { targetInterval: 8000, targetDuration: 6000 },
+      medium: { targetInterval: 5000, targetDuration: 4000 },
+      hard: { targetInterval: 3000, targetDuration: 2500 }
+    };
+    
+    const MESSAGES = {
+      targetHit: ['NICE!', 'PERFECT!', 'GOT IT!', 'SMOOTH!', '🔥'],
+      inScale: ['', '', '', 'flowing...', 'in the zone'],
+      outScale: ['outside!', 'chromatic?', '']
+    };
+    
+    let config = { scale: 'major', difficulty: 'medium' };
+    let state = {
+      running: false,
+      score: 0,
+      streak: 0,
+      targetsHit: 0,
+      targetsTotal: 0,
+      currentTarget: null,
+      targetTimeout: null,
+      phrase: [],
+      scaleNotes: []
+    };
+    
+    let audioCtx;
+    let micState = {
+      enabled: false,
+      analyzer: null,
+      lastDetectedNote: null,
+      pitchHistory: []
+    };
+    
+    const $ = id => document.getElementById(id);
+    
+    // Setup
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const siblings = btn.parentElement.querySelectorAll('.option-btn');
+        siblings.forEach(s => s.classList.remove('selected'));
+        btn.classList.add('selected');
+        
+        if (btn.dataset.scale) config.scale = btn.dataset.scale;
+        if (btn.dataset.diff) config.difficulty = btn.dataset.diff;
+      });
+    });
+    
+    $('startBtn').addEventListener('click', startGame);
+    
+    async function startGame() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+        });
+        const source = audioCtx.createMediaStreamSource(stream);
+        micState.analyzer = audioCtx.createAnalyser();
+        micState.analyzer.fftSize = 4096;
+        source.connect(micState.analyzer);
+        micState.enabled = true;
+        $('micStatus').textContent = 'MIC ACTIVE';
+        $('micStatus').classList.add('active');
+      } catch (err) {
+        alert('Microphone required!');
+        return;
+      }
+      
+      const scale = SCALES[config.scale];
+      state = {
+        running: true,
+        score: 0,
+        streak: 0,
+        targetsHit: 0,
+        targetsTotal: 0,
+        currentTarget: null,
+        targetTimeout: null,
+        phrase: [],
+        scaleNotes: scale.intervals.map(i => NOTE_NAMES[(scale.root + i) % 12])
+      };
+      
+      $('setupScreen').classList.add('hidden');
+      $('gameContainer').style.display = 'flex';
+      $('scaleName').textContent = scale.name;
+      
+      renderScaleNotes();
+      updateStats();
+      
+      // Start target spawning
+      scheduleNextTarget();
+      
+      // Start detection loop
+      detectLoop();
+    }
+    
+    function renderScaleNotes() {
+      const container = $('scaleNotes');
+      container.innerHTML = '';
+      state.scaleNotes.forEach(note => {
+        const el = document.createElement('div');
+        el.className = 'scale-note';
+        el.dataset.note = note;
+        el.textContent = note;
+        container.appendChild(el);
+      });
+    }
+    
+    function scheduleNextTarget() {
+      if (!state.running) return;
+      
+      const diff = DIFFICULTIES[config.difficulty];
+      const delay = diff.targetInterval + Math.random() * 2000;
+      
+      setTimeout(() => {
+        if (!state.running) return;
+        spawnTarget();
+      }, delay);
+    }
+    
+    function spawnTarget() {
+      const diff = DIFFICULTIES[config.difficulty];
+      const note = state.scaleNotes[Math.floor(Math.random() * state.scaleNotes.length)];
+      
+      state.currentTarget = note;
+      state.targetsTotal++;
+      
+      $('targetNote').textContent = note;
+      $('targetNote').style.animation = 'none';
+      $('targetNote').offsetHeight;
+      $('targetNote').style.animation = 'pulse 0.5s infinite alternate';
+      $('targetHint').textContent = 'HIT IT!';
+      
+      // Mark in scale display
+      document.querySelectorAll('.scale-note').forEach(el => {
+        el.classList.toggle('target', el.dataset.note === note);
+      });
+      
+      // Timeout for target
+      state.targetTimeout = setTimeout(() => {
+        if (state.currentTarget === note) {
+          missTarget();
+        }
+      }, diff.targetDuration);
+      
+      scheduleNextTarget();
+    }
+    
+    function hitTarget() {
+      clearTimeout(state.targetTimeout);
+      state.targetsHit++;
+      state.score += 100 * (1 + Math.floor(state.streak / 5));
+      state.streak++;
+      
+      showMessage(MESSAGES.targetHit[Math.floor(Math.random() * MESSAGES.targetHit.length)]);
+      
+      $('targetNote').textContent = '✓';
+      $('targetNote').style.color = '#0f8';
+      $('targetHint').textContent = 'keep going!';
+      
+      document.querySelectorAll('.scale-note.target').forEach(el => {
+        el.classList.remove('target');
+        el.classList.add('hit');
+        setTimeout(() => el.classList.remove('hit'), 500);
+      });
+      
+      state.currentTarget = null;
+      
+      setTimeout(() => {
+        if (!state.currentTarget) {
+          $('targetNote').textContent = '-';
+          $('targetNote').style.color = '#0f8';
+          $('targetHint').textContent = 'improvise freely...';
+        }
+      }, 1000);
+      
+      updateStats();
+    }
+    
+    function missTarget() {
+      state.streak = 0;
+      state.currentTarget = null;
+      
+      $('targetNote').textContent = '✗';
+      $('targetNote').style.color = '#f66';
+      $('targetHint').textContent = 'missed!';
+      
+      document.querySelectorAll('.scale-note.target').forEach(el => el.classList.remove('target'));
+      
+      setTimeout(() => {
+        if (!state.currentTarget) {
+          $('targetNote').textContent = '-';
+          $('targetNote').style.color = '#0f8';
+          $('targetHint').textContent = 'improvise freely...';
+        }
+      }, 1000);
+      
+      updateStats();
+    }
+    
+    function onNotePlayed(note) {
+      const inScale = state.scaleNotes.includes(note);
+      
+      // Update played note display
+      $('playedNote').textContent = note;
+      $('playedNote').style.color = inScale ? '#f80' : '#f66';
+      
+      // Highlight in scale display
+      document.querySelectorAll('.scale-note').forEach(el => {
+        el.classList.toggle('active', el.dataset.note === note);
+        if (el.dataset.note === note && !inScale) {
+          el.classList.add('wrong');
+          setTimeout(() => el.classList.remove('wrong'), 300);
+        }
+      });
+      
+      // Add to phrase
+      state.phrase.push({ note, inScale, isTarget: note === state.currentTarget });
+      if (state.phrase.length > 16) state.phrase.shift();
+      renderPhrase();
+      
+      // Check for target hit
+      if (state.currentTarget && note === state.currentTarget) {
+        hitTarget();
+        return;
+      }
+      
+      // Score for in-scale notes
+      if (inScale) {
+        state.score += 5;
+        state.streak++;
+        if (Math.random() < 0.2) {
+          showMessage(MESSAGES.inScale[Math.floor(Math.random() * MESSAGES.inScale.length)]);
+        }
+      } else {
+        state.streak = 0;
+        if (Math.random() < 0.3) {
+          showMessage(MESSAGES.outScale[Math.floor(Math.random() * MESSAGES.outScale.length)]);
+        }
+      }
+      
+      updateStats();
+    }
+    
+    function renderPhrase() {
+      const container = $('phraseDisplay');
+      container.innerHTML = '';
+      state.phrase.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'phrase-note';
+        if (p.isTarget) el.classList.add('target-hit');
+        else if (p.inScale) el.classList.add('in-scale');
+        else el.classList.add('out-of-scale');
+        el.textContent = p.note;
+        container.appendChild(el);
+      });
+    }
+    
+    function showMessage(msg) {
+      if (!msg) return;
+      const el = $('message');
+      el.textContent = msg;
+      el.style.animation = 'none';
+      el.offsetHeight;
+      el.style.animation = 'fadeIn 0.3s';
+      setTimeout(() => el.textContent = '', 2000);
+    }
+    
+    function updateStats() {
+      $('scoreValue').textContent = state.score;
+      $('streakValue').textContent = state.streak;
+      $('targetsValue').textContent = state.targetsHit + '/' + state.targetsTotal;
+    }
+    
+    function detectLoop() {
+      if (!state.running) return;
+      
+      if (micState.analyzer) {
+        const buffer = new Float32Array(micState.analyzer.fftSize);
+        micState.analyzer.getFloatTimeDomainData(buffer);
+        const result = autoCorrelate(buffer, audioCtx.sampleRate);
+        
+        if (result.frequency > 30 && result.frequency < 400 && result.confidence > 0.5) {
+          const midi = Math.round(12 * Math.log2(result.frequency / A4_FREQ) + A4_MIDI);
+          const noteName = NOTE_NAMES[midi % 12];
+          
+          if (isPitchStable(midi) && noteName !== micState.lastDetectedNote) {
+            micState.lastDetectedNote = noteName;
+            onNotePlayed(noteName);
+          }
+        } else {
+          micState.pitchHistory = [];
+        }
+      }
+      
+      requestAnimationFrame(detectLoop);
+    }
+    
+    function isPitchStable(midi) {
+      micState.pitchHistory.push(midi);
+      if (micState.pitchHistory.length > 3) micState.pitchHistory.shift();
+      if (micState.pitchHistory.length < 3) return false;
+      return micState.pitchHistory.every(m => Math.abs(m - micState.pitchHistory[2]) <= 1);
+    }
+    
+    function autoCorrelate(buffer, sampleRate) {
+      const SIZE = buffer.length;
+      let rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.02) return { frequency: -1, confidence: 0 };
+      
+      const yinBufferSize = Math.floor(SIZE / 2);
+      const yinBuffer = new Float32Array(yinBufferSize);
+      
+      for (let tau = 0; tau < yinBufferSize; tau++) {
+        yinBuffer[tau] = 0;
+        for (let i = 0; i < yinBufferSize; i++) {
+          const delta = buffer[i] - buffer[i + tau];
+          yinBuffer[tau] += delta * delta;
+        }
+      }
+      
+      yinBuffer[0] = 1;
+      let runningSum = 0;
+      for (let tau = 1; tau < yinBufferSize; tau++) {
+        runningSum += yinBuffer[tau];
+        yinBuffer[tau] *= tau / runningSum;
+      }
+      
+      let tauEstimate = -1;
+      for (let tau = 2; tau < yinBufferSize; tau++) {
+        if (yinBuffer[tau] < 0.4) {
+          while (tau + 1 < yinBufferSize && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
+          tauEstimate = tau;
+          break;
+        }
+      }
+      
+      if (tauEstimate === -1) return { frequency: -1, confidence: 0 };
+      
+      let betterTau = tauEstimate;
+      if (tauEstimate > 0 && tauEstimate < yinBufferSize - 1) {
+        const s0 = yinBuffer[tauEstimate - 1], s1 = yinBuffer[tauEstimate], s2 = yinBuffer[tauEstimate + 1];
+        betterTau = tauEstimate + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+      }
+      
+      return { frequency: sampleRate / betterTau, confidence: 1 - yinBuffer[tauEstimate] };
+    }
+  </script>
+</body>
+</html>

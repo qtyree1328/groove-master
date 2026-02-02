@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Groove Lock - Bass Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #0a1a0a 0%, #0a2a1a 100%);
+      min-height: 100vh;
+      color: #fff;
+      font-family: 'Syne Mono', monospace;
+    }
+    
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 20px;
+      border-bottom: 1px solid rgba(0,255,102,0.2);
+    }
+    
+    .back-link {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+    }
+    
+    .back-link:hover { color: #0f6; }
+    
+    h1 {
+      font-size: 1.8rem;
+      color: #0f6;
+      text-shadow: 0 0 20px rgba(0,255,102,0.5);
+    }
+    
+    .game-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .timing-display {
+      width: 100%;
+      max-width: 500px;
+      height: 150px;
+      background: rgba(0,0,0,0.5);
+      border: 3px solid rgba(0,255,102,0.3);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+      margin: 30px 0;
+    }
+    
+    .beat-line {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #0f6;
+      transform: translateX(-50%);
+      box-shadow: 0 0 15px #0f6;
+    }
+    
+    .timing-zones {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+    }
+    
+    .zone {
+      height: 100%;
+      opacity: 0.15;
+    }
+    
+    .zone.perfect { width: 20px; background: #0f6; }
+    .zone.good { width: 40px; background: #fc0; }
+    .zone.ok { width: 60px; background: #f80; }
+    
+    .hit-marker {
+      position: absolute;
+      top: 50%;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: hitPop 0.5s ease-out forwards;
+    }
+    
+    @keyframes hitPop {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    }
+    
+    .bpm-display {
+      font-size: 4rem;
+      color: #0f6;
+      text-shadow: 0 0 30px rgba(0,255,102,0.5);
+    }
+    
+    .bpm-label {
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 20px;
+    }
+    
+    .note-display {
+      font-size: 3rem;
+      margin: 20px 0;
+      color: #fc0;
+    }
+    
+    .beat-visual {
+      display: flex;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    
+    .beat-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      border: 2px solid rgba(255,255,255,0.3);
+      transition: all 0.05s;
+    }
+    
+    .beat-dot.active {
+      background: #0f6;
+      box-shadow: 0 0 20px #0f6;
+      transform: scale(1.3);
+    }
+    
+    .beat-dot.downbeat.active {
+      background: #fc0;
+      box-shadow: 0 0 20px #fc0;
+    }
+    
+    .score-display {
+      font-size: 2.5rem;
+      color: #fc0;
+      margin: 20px 0;
+    }
+    
+    .rating {
+      font-size: 1.5rem;
+      margin: 10px 0;
+      min-height: 40px;
+    }
+    
+    .rating.perfect { color: #0f6; }
+    .rating.good { color: #fc0; }
+    .rating.ok { color: #f80; }
+    .rating.miss { color: #f66; }
+    
+    .accuracy-meter {
+      width: 300px;
+      height: 15px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    
+    .accuracy-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f66, #f80, #fc0, #0f6);
+      transition: width 0.3s;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 30px;
+      margin-top: 20px;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      color: #fc0;
+    }
+    
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.8rem;
+    }
+    
+    .setup-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    .setup-screen.hidden { display: none; }
+    
+    .setup-title {
+      font-size: 2.5rem;
+      color: #0f6;
+      margin-bottom: 20px;
+    }
+    
+    .setup-desc {
+      color: rgba(255,255,255,0.6);
+      max-width: 450px;
+      text-align: center;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+    
+    .setup-section {
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    
+    .setup-label {
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 10px;
+    }
+    
+    .option-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .option-btn {
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 10px;
+      color: #fff;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .option-btn:hover { border-color: #0f6; }
+    .option-btn.selected { background: rgba(0,255,102,0.2); border-color: #0f6; color: #0f6; }
+    
+    .start-btn {
+      margin-top: 20px;
+      padding: 18px 50px;
+      background: linear-gradient(135deg, #0f6, #0a4);
+      border: none;
+      border-radius: 15px;
+      color: #000;
+      font-family: inherit;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    
+    .start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(0,255,102,0.5);
+    }
+    
+    .mic-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+    }
+    
+    .mic-status.active { color: #0f6; }
+  </style>
+</head>
+<body>
+  <div class="mic-status" id="micStatus">MIC OFF</div>
+  
+  <div class="setup-screen" id="setupScreen">
+    <h1 class="setup-title">🥁 GROOVE LOCK</h1>
+    <p class="setup-desc">
+      Play your note <strong>exactly</strong> on the beat.<br>
+      Feel the pocket and lock in with the groove!<br>
+      Timing precision is everything.
+    </p>
+    
+    <div class="setup-section">
+      <div class="setup-label">BPM</div>
+      <div class="option-buttons">
+        <button class="option-btn" data-bpm="70">70</button>
+        <button class="option-btn selected" data-bpm="90">90</button>
+        <button class="option-btn" data-bpm="110">110</button>
+        <button class="option-btn" data-bpm="130">130</button>
+      </div>
+    </div>
+    
+    <div class="setup-section">
+      <div class="setup-label">PATTERN</div>
+      <div class="option-buttons">
+        <button class="option-btn selected" data-pattern="quarter">Quarter Notes</button>
+        <button class="option-btn" data-pattern="eighth">Eighth Notes</button>
+        <button class="option-btn" data-pattern="syncopated">Syncopated</button>
+      </div>
+    </div>
+    
+    <div class="setup-section">
+      <div class="setup-label">NOTE</div>
+      <div class="option-buttons">
+        <button class="option-btn selected" data-note="E">E</button>
+        <button class="option-btn" data-note="A">A</button>
+        <button class="option-btn" data-note="any">Any</button>
+      </div>
+    </div>
+    
+    <button class="start-btn" id="startBtn">START GROOVING</button>
+  </div>
+  
+  <div class="container" id="gameContainer" style="display: none;">
+    <header>
+      <a href="index.html" class="back-link">← BASS LAB</a>
+      <h1>GROOVE LOCK</h1>
+    </header>
+    
+    <div class="game-area">
+      <div class="bpm-display" id="bpmDisplay">90</div>
+      <div class="bpm-label">BPM</div>
+      
+      <div class="beat-visual" id="beatVisual">
+        <div class="beat-dot downbeat"></div>
+        <div class="beat-dot"></div>
+        <div class="beat-dot"></div>
+        <div class="beat-dot"></div>
+      </div>
+      
+      <div class="timing-display" id="timingDisplay">
+        <div class="timing-zones">
+          <div class="zone ok"></div>
+          <div class="zone good"></div>
+          <div class="zone perfect"></div>
+          <div class="zone perfect"></div>
+          <div class="zone good"></div>
+          <div class="zone ok"></div>
+        </div>
+        <div class="beat-line"></div>
+      </div>
+      
+      <div class="note-display" id="noteDisplay">E</div>
+      
+      <div class="rating" id="rating"></div>
+      
+      <div class="score-display">SCORE: <span id="scoreValue">0</span></div>
+      
+      <div class="accuracy-meter">
+        <div class="accuracy-fill" id="accuracyFill"></div>
+      </div>
+      
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="perfectCount">0</div>
+          <div class="stat-label">PERFECT</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="goodCount">0</div>
+          <div class="stat-label">GOOD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="missCount">0</div>
+          <div class="stat-label">MISS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const A4_FREQ = 440, A4_MIDI = 69;
+    
+    let config = { bpm: 90, pattern: 'quarter', note: 'E' };
+    let state = {
+      running: false,
+      beat: 0,
+      lastBeatTime: 0,
+      score: 0,
+      perfect: 0,
+      good: 0,
+      misses: 0,
+      totalBeats: 0,
+      lastHitTime: 0,
+      expectedBeats: [] // timestamps when we expect hits
+    };
+    
+    let audioCtx;
+    let micState = { enabled: false, analyzer: null, pitchHistory: [], lastNote: null };
+    
+    const $ = id => document.getElementById(id);
+    
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.parentElement.querySelectorAll('.option-btn').forEach(s => s.classList.remove('selected'));
+        btn.classList.add('selected');
+        if (btn.dataset.bpm) config.bpm = parseInt(btn.dataset.bpm);
+        if (btn.dataset.pattern) config.pattern = btn.dataset.pattern;
+        if (btn.dataset.note) config.note = btn.dataset.note;
+      });
+    });
+    
+    $('startBtn').addEventListener('click', startGame);
+    
+    async function startGame() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+        });
+        const source = audioCtx.createMediaStreamSource(stream);
+        micState.analyzer = audioCtx.createAnalyser();
+        micState.analyzer.fftSize = 2048; // Smaller for faster response
+        source.connect(micState.analyzer);
+        micState.enabled = true;
+        $('micStatus').textContent = 'MIC ACTIVE';
+        $('micStatus').classList.add('active');
+      } catch (err) {
+        alert('Microphone required!');
+        return;
+      }
+      
+      state = {
+        running: true,
+        beat: 0,
+        lastBeatTime: performance.now(),
+        score: 0,
+        perfect: 0,
+        good: 0,
+        misses: 0,
+        totalBeats: 0,
+        lastHitTime: 0,
+        expectedBeats: []
+      };
+      
+      $('setupScreen').classList.add('hidden');
+      $('gameContainer').style.display = 'flex';
+      $('bpmDisplay').textContent = config.bpm;
+      $('noteDisplay').textContent = config.note === 'any' ? 'ANY' : config.note;
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function gameLoop(now) {
+      if (!state.running) return;
+      
+      detectNote();
+      
+      const beatInterval = 60000 / config.bpm;
+      const elapsed = now - state.lastBeatTime;
+      
+      if (elapsed >= beatInterval) {
+        onBeat(now);
+        state.lastBeatTime = now - (elapsed % beatInterval);
+      }
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function onBeat(now) {
+      state.beat = (state.beat + 1) % 4;
+      state.totalBeats++;
+      
+      // Visual metronome
+      const dots = $('beatVisual').querySelectorAll('.beat-dot');
+      dots.forEach((d, i) => d.classList.toggle('active', i === state.beat));
+      
+      // Play click
+      playClick(state.beat === 0);
+      
+      // Add expected beat time based on pattern
+      if (config.pattern === 'quarter') {
+        state.expectedBeats.push(now);
+      } else if (config.pattern === 'eighth') {
+        state.expectedBeats.push(now);
+        state.expectedBeats.push(now + (60000 / config.bpm) / 2);
+      } else if (config.pattern === 'syncopated') {
+        // Syncopated: beat 1, off of 2, beat 3
+        if (state.beat === 0 || state.beat === 2) {
+          state.expectedBeats.push(now);
+        }
+        if (state.beat === 1) {
+          state.expectedBeats.push(now + (60000 / config.bpm) / 2);
+        }
+      }
+      
+      // Check for missed beats (old expected beats)
+      const missThreshold = 200; // ms
+      state.expectedBeats = state.expectedBeats.filter(t => {
+        if (now - t > missThreshold) {
+          onMiss();
+          return false;
+        }
+        return true;
+      });
+      
+      updateDisplay();
+    }
+    
+    function onNoteDetected(note, now) {
+      // Check if note matches
+      if (config.note !== 'any' && note !== config.note) return;
+      
+      // Find closest expected beat
+      let closestBeat = null;
+      let closestDiff = Infinity;
+      
+      state.expectedBeats.forEach((t, i) => {
+        const diff = Math.abs(now - t);
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestBeat = i;
+        }
+      });
+      
+      if (closestBeat === null) return;
+      
+      // Remove the matched beat
+      state.expectedBeats.splice(closestBeat, 1);
+      
+      // Calculate timing offset for visual
+      const offset = now - (state.lastBeatTime + (60000 / config.bpm) * (state.beat / 4));
+      showHitMarker(closestDiff, offset);
+      
+      // Rate the timing
+      if (closestDiff < 30) {
+        state.perfect++;
+        state.score += 100;
+        showRating('PERFECT!', 'perfect');
+      } else if (closestDiff < 60) {
+        state.good++;
+        state.score += 50;
+        showRating('GOOD', 'good');
+      } else if (closestDiff < 120) {
+        state.score += 20;
+        showRating('OK', 'ok');
+      } else {
+        onMiss();
+      }
+      
+      updateDisplay();
+    }
+    
+    function onMiss() {
+      state.misses++;
+      showRating('MISS', 'miss');
+    }
+    
+    function showHitMarker(diff, offset) {
+      const display = $('timingDisplay');
+      const marker = document.createElement('div');
+      marker.className = 'hit-marker';
+      
+      // Position based on timing (center = perfect)
+      const center = display.offsetWidth / 2;
+      const offsetPx = (offset / 100) * 50; // Scale offset to pixels
+      marker.style.left = (center + offsetPx) + 'px';
+      
+      // Color based on accuracy
+      if (diff < 30) marker.style.background = '#0f6';
+      else if (diff < 60) marker.style.background = '#fc0';
+      else marker.style.background = '#f80';
+      
+      display.appendChild(marker);
+      setTimeout(() => marker.remove(), 500);
+    }
+    
+    function showRating(text, cls) {
+      const el = $('rating');
+      el.textContent = text;
+      el.className = 'rating ' + cls;
+    }
+    
+    function updateDisplay() {
+      $('scoreValue').textContent = state.score;
+      $('perfectCount').textContent = state.perfect;
+      $('goodCount').textContent = state.good;
+      $('missCount').textContent = state.misses;
+      
+      const total = state.perfect + state.good + state.misses;
+      const accuracy = total > 0 ? ((state.perfect * 2 + state.good) / (total * 2)) * 100 : 100;
+      $('accuracyFill').style.width = accuracy + '%';
+    }
+    
+    function playClick(downbeat) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = downbeat ? 1000 : 800;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    }
+    
+    function detectNote() {
+      if (!micState.analyzer) return;
+      
+      const buffer = new Float32Array(micState.analyzer.fftSize);
+      micState.analyzer.getFloatTimeDomainData(buffer);
+      
+      // Check for attack (sudden increase in volume)
+      let rms = 0;
+      for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / buffer.length);
+      
+      if (rms < 0.03) {
+        micState.lastNote = null;
+        return;
+      }
+      
+      const result = autoCorrelate(buffer, audioCtx.sampleRate);
+      
+      if (result.frequency > 30 && result.frequency < 400 && result.confidence > 0.5) {
+        const midi = Math.round(12 * Math.log2(result.frequency / A4_FREQ) + A4_MIDI);
+        const note = NOTE_NAMES[midi % 12];
+        
+        if (note !== micState.lastNote) {
+          micState.lastNote = note;
+          onNoteDetected(note, performance.now());
+        }
+      }
+    }
+    
+    function autoCorrelate(buffer, sampleRate) {
+      const SIZE = buffer.length;
+      let rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.02) return { frequency: -1, confidence: 0 };
+      
+      const yinBufferSize = Math.floor(SIZE / 2);
+      const yinBuffer = new Float32Array(yinBufferSize);
+      
+      for (let tau = 0; tau < yinBufferSize; tau++) {
+        yinBuffer[tau] = 0;
+        for (let i = 0; i < yinBufferSize; i++) {
+          const delta = buffer[i] - buffer[i + tau];
+          yinBuffer[tau] += delta * delta;
+        }
+      }
+      
+      yinBuffer[0] = 1;
+      let runningSum = 0;
+      for (let tau = 1; tau < yinBufferSize; tau++) {
+        runningSum += yinBuffer[tau];
+        yinBuffer[tau] *= tau / runningSum;
+      }
+      
+      let tauEstimate = -1;
+      for (let tau = 2; tau < yinBufferSize; tau++) {
+        if (yinBuffer[tau] < 0.4) {
+          while (tau + 1 < yinBufferSize && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
+          tauEstimate = tau;
+          break;
+        }
+      }
+      
+      if (tauEstimate === -1) return { frequency: -1, confidence: 0 };
+      
+      let betterTau = tauEstimate;
+      if (tauEstimate > 0 && tauEstimate < yinBufferSize - 1) {
+        const s0 = yinBuffer[tauEstimate - 1], s1 = yinBuffer[tauEstimate], s2 = yinBuffer[tauEstimate + 1];
+        betterTau = tauEstimate + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+      }
+      
+      return { frequency: sampleRate / betterTau, confidence: 1 - yinBuffer[tauEstimate] };
+    }
+  </script>
+</body>
+</html>
