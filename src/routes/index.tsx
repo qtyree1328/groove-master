@@ -273,6 +273,12 @@ function CommandCenter() {
             desc="Real-time monitor"
           />
           <NavCard 
+            to="/calendar" 
+            icon="📅" 
+            name="Calendar" 
+            desc="Events & AI suggestions"
+          />
+          <NavCard 
             to="/sketch" 
             icon="✏️" 
             name="Quick Sketch" 
