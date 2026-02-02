@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Treadmill - Bass Lab</title>
+  <title>Scale Treadmill - Bass Trainer</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
     
@@ -17,731 +17,790 @@
       overflow: hidden;
     }
     
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      min-height: 100vh;
+    .app {
       display: flex;
-      flex-direction: column;
+      height: 100vh;
     }
     
-    header {
+    /* Side Panel */
+    .side-panel {
+      width: 280px;
+      background: rgba(0,0,0,0.6);
+      border-right: 2px solid rgba(0,255,204,0.3);
+      padding: 20px;
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+    
+    .panel-header {
+      display: flex;
       align-items: center;
-      padding: 10px 0 20px;
-      border-bottom: 1px solid rgba(0,255,204,0.2);
+      justify-content: space-between;
     }
     
     .back-link {
       color: rgba(255,255,255,0.6);
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
-    
     .back-link:hover { color: #0fc; }
     
-    h1 {
-      font-size: 1.8rem;
+    .panel-title {
+      font-size: 1.1rem;
       color: #0fc;
-      text-shadow: 0 0 20px rgba(0,255,204,0.5);
+      text-shadow: 0 0 10px rgba(0,255,204,0.5);
     }
     
-    .game-area {
+    .setting-group {
+      background: rgba(0,255,204,0.05);
+      border: 1px solid rgba(0,255,204,0.2);
+      border-radius: 10px;
+      padding: 15px;
+    }
+    
+    .setting-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .setting-group select,
+    .setting-group input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(0,255,204,0.3);
+      border-radius: 6px;
+      color: #0fc;
+      font-family: 'Syne Mono', monospace;
+      font-size: 1rem;
+    }
+    
+    .setting-group select:focus,
+    .setting-group input:focus {
+      outline: none;
+      border-color: #0fc;
+      box-shadow: 0 0 10px rgba(0,255,204,0.3);
+    }
+    
+    .btn {
+      padding: 15px 20px;
+      font-family: 'Syne Mono', monospace;
+      font-size: 1rem;
+      border: 2px solid #0fc;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    
+    .btn-start {
+      background: rgba(0,255,204,0.2);
+      color: #0fc;
+    }
+    .btn-start:hover {
+      background: #0fc;
+      color: #000;
+      box-shadow: 0 0 20px rgba(0,255,204,0.5);
+    }
+    
+    .btn-pause {
+      background: rgba(255,200,0,0.2);
+      color: #fc0;
+      border-color: #fc0;
+    }
+    .btn-pause:hover {
+      background: #fc0;
+      color: #000;
+    }
+    
+    .btn-stop {
+      background: rgba(255,0,0,0.2);
+      color: #f66;
+      border-color: #f66;
+    }
+    .btn-stop:hover {
+      background: #f66;
+      color: #000;
+    }
+    
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+    }
+    
+    .live-stats {
+      background: rgba(0,0,0,0.4);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.85rem;
+    }
+    
+    .live-stats div {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    
+    .live-stats div:last-child { margin-bottom: 0; }
+    
+    .stat-label { color: rgba(255,255,255,0.5); }
+    .stat-value { color: #0fc; }
+    .stat-value.good { color: #0f8; }
+    .stat-value.bad { color: #f66; }
+    
+    /* Main Area */
+    .main-area {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
+      position: relative;
     }
     
-    .bpm-display {
-      font-size: 6rem;
-      color: #0fc;
-      text-shadow: 0 0 40px rgba(0,255,204,0.8);
-      margin-bottom: 10px;
-      transition: all 0.1s;
+    .track-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
     }
     
-    .bpm-display.beat { transform: scale(1.1); }
-    
-    .bpm-label {
-      font-size: 1.5rem;
-      color: rgba(255,255,255,0.6);
-      margin-bottom: 30px;
+    canvas {
+      width: 100%;
+      height: 100%;
     }
     
-    .note-display {
-      font-size: 4rem;
-      margin: 30px 0;
-      padding: 30px 60px;
-      background: rgba(0,0,0,0.5);
-      border: 3px solid rgba(0,255,204,0.5);
-      border-radius: 20px;
-      min-width: 200px;
-      transition: all 0.1s;
-    }
-    
-    .note-display.hit {
-      background: rgba(0,255,100,0.3);
-      border-color: #0f8;
-      box-shadow: 0 0 40px rgba(0,255,100,0.5);
-    }
-    
-    .note-display.miss {
-      background: rgba(255,0,0,0.3);
-      border-color: #f00;
-      box-shadow: 0 0 40px rgba(255,0,0,0.5);
-    }
-    
-    .stats {
-      display: flex;
-      gap: 40px;
-      margin-top: 30px;
-    }
-    
-    .stat {
-      text-align: center;
-    }
-    
-    .stat-value {
-      font-size: 2rem;
-      color: #fc0;
-    }
-    
-    .stat-label {
-      color: rgba(255,255,255,0.5);
-      font-size: 0.8rem;
-    }
-    
-    .metronome-visual {
-      display: flex;
-      gap: 15px;
-      margin: 20px 0;
-    }
-    
-    .metro-dot {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-      transition: all 0.05s;
-    }
-    
-    .metro-dot.active {
-      background: #0fc;
-      box-shadow: 0 0 20px #0fc;
-      transform: scale(1.3);
-    }
-    
-    .metro-dot.downbeat.active {
-      background: #fc0;
-      box-shadow: 0 0 20px #fc0;
-    }
-    
-    /* Setup screen */
-    .setup-screen, .game-over-screen {
+    /* Pause Modal */
+    .modal-overlay {
+      display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.95);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      background: rgba(0,0,0,0.8);
       justify-content: center;
+      align-items: center;
       z-index: 100;
     }
     
-    .setup-screen.hidden, .game-over-screen.hidden { display: none; }
-    
-    .setup-title {
-      font-size: 2.5rem;
-      color: #0fc;
-      margin-bottom: 40px;
-    }
-    
-    .setup-section {
-      margin-bottom: 30px;
-      text-align: center;
-    }
-    
-    .setup-label {
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 15px;
-      font-size: 1rem;
-    }
-    
-    .option-buttons {
+    .modal-overlay.visible {
       display: flex;
-      gap: 15px;
     }
     
-    .option-btn {
-      padding: 15px 30px;
-      background: rgba(255,255,255,0.1);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 10px;
-      color: #fff;
-      font-family: inherit;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: all 0.2s;
+    .modal {
+      background: linear-gradient(135deg, #1a2a2a, #0a1a1a);
+      border: 2px solid #0fc;
+      border-radius: 20px;
+      padding: 40px;
+      min-width: 350px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(0,255,204,0.3);
     }
     
-    .option-btn:hover { border-color: #0fc; }
-    .option-btn.selected {
-      background: rgba(0,255,204,0.2);
-      border-color: #0fc;
-      color: #0fc;
-    }
-    
-    .start-btn {
-      margin-top: 30px;
-      padding: 20px 60px;
-      background: linear-gradient(135deg, #0fc, #0a8);
-      border: none;
-      border-radius: 15px;
-      color: #000;
-      font-family: inherit;
-      font-size: 1.3rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .start-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 30px rgba(0,255,204,0.5);
-    }
-    
-    .game-over-title {
-      font-size: 3rem;
-      color: #f66;
-      margin-bottom: 20px;
-    }
-    
-    .final-stats {
-      font-size: 1.5rem;
+    .modal h2 {
+      font-size: 2rem;
       color: #fc0;
       margin-bottom: 30px;
+      text-shadow: 0 0 20px rgba(255,200,0,0.5);
     }
     
-    .accuracy-bar {
-      width: 300px;
-      height: 10px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 5px;
-      margin: 20px 0;
-      overflow: hidden;
+    .modal-stats {
+      text-align: left;
+      margin-bottom: 30px;
     }
     
-    .accuracy-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #f00, #fc0, #0f8);
-      transition: width 0.5s;
+    .modal-stats div {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 1.1rem;
     }
     
-    .timing-window {
-      width: 100%;
-      max-width: 400px;
-      height: 60px;
-      background: rgba(0,0,0,0.5);
-      border-radius: 10px;
-      position: relative;
-      margin: 20px 0;
-      overflow: hidden;
+    .modal-stats .label { color: rgba(255,255,255,0.6); }
+    .modal-stats .value { color: #0fc; font-weight: bold; }
+    .modal-stats .value.good { color: #0f8; }
+    .modal-stats .value.bad { color: #f66; }
+    
+    .modal-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
     }
     
-    .timing-center {
+    .modal .btn {
+      min-width: 120px;
+    }
+
+    /* Detected note display */
+    .detected-note {
       position: absolute;
+      bottom: 20px;
       left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      background: #0fc;
       transform: translateX(-50%);
-      box-shadow: 0 0 10px #0fc;
+      font-size: 2rem;
+      color: #0fc;
+      text-shadow: 0 0 20px rgba(0,255,204,0.8);
+      background: rgba(0,0,0,0.6);
+      padding: 10px 30px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,255,204,0.3);
     }
     
-    .timing-hit {
-      position: absolute;
-      top: 50%;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      animation: fadeOut 1s forwards;
+    .detected-note.hit { color: #0f8; border-color: #0f8; }
+    .detected-note.miss { color: #f66; border-color: #f66; }
+
+    @media (max-width: 700px) {
+      .app { flex-direction: column; }
+      .side-panel {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-right: none;
+        border-bottom: 2px solid rgba(0,255,204,0.3);
+      }
+      .setting-group { flex: 1; min-width: 140px; }
+      .controls { flex-direction: row; flex-wrap: wrap; }
+      .controls .btn { flex: 1; }
     }
-    
-    @keyframes fadeOut {
-      to { opacity: 0; transform: translate(-50%, -50%) scale(2); }
-    }
-    
-    .mic-status {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.5);
-    }
-    
-    .mic-status.active { color: #0fc; }
   </style>
 </head>
 <body>
-  <div class="mic-status" id="micStatus">MIC OFF</div>
-  
-  <div class="setup-screen" id="setupScreen">
-    <h1 class="setup-title">🏃 TREADMILL</h1>
-    
-    <div class="setup-section">
-      <div class="setup-label">MODE</div>
-      <div class="option-buttons">
-        <button class="option-btn selected" data-mode="1">1 NOTE</button>
-        <button class="option-btn" data-mode="2">2 NOTES</button>
+  <div class="app">
+    <div class="side-panel">
+      <div class="panel-header">
+        <a href="index.html" class="back-link">← Back</a>
+        <span class="panel-title">TREADMILL</span>
+      </div>
+      
+      <div class="setting-group">
+        <label>Root Note</label>
+        <select id="root-note">
+          <option value="0">C</option>
+          <option value="1">C# / Db</option>
+          <option value="2">D</option>
+          <option value="3">D# / Eb</option>
+          <option value="4" selected>E</option>
+          <option value="5">F</option>
+          <option value="6">F# / Gb</option>
+          <option value="7">G</option>
+          <option value="8">G# / Ab</option>
+          <option value="9">A</option>
+          <option value="10">A# / Bb</option>
+          <option value="11">B</option>
+        </select>
+      </div>
+      
+      <div class="setting-group">
+        <label>Scale / Mode</label>
+        <select id="scale-type">
+          <option value="major">Major (Ionian)</option>
+          <option value="minor">Natural Minor (Aeolian)</option>
+          <option value="dorian">Dorian</option>
+          <option value="phrygian">Phrygian</option>
+          <option value="lydian">Lydian</option>
+          <option value="mixolydian">Mixolydian</option>
+          <option value="locrian">Locrian</option>
+          <option value="pentatonic-major">Pentatonic Major</option>
+          <option value="pentatonic-minor" selected>Pentatonic Minor</option>
+          <option value="blues">Blues</option>
+        </select>
+      </div>
+      
+      <div class="setting-group">
+        <label>Starting BPM</label>
+        <input type="number" id="start-bpm" value="60" min="30" max="200">
+      </div>
+      
+      <div class="setting-group">
+        <label>Acceleration (BPM/min)</label>
+        <input type="number" id="acceleration" value="0" min="0" max="30" step="1">
+        <small style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">0 = constant speed</small>
+      </div>
+      
+      <div class="live-stats">
+        <div><span class="stat-label">Current BPM</span><span class="stat-value" id="current-bpm">60</span></div>
+        <div><span class="stat-label">Hits</span><span class="stat-value good" id="hits">0</span></div>
+        <div><span class="stat-label">Misses</span><span class="stat-value bad" id="misses">0</span></div>
+        <div><span class="stat-label">Accuracy</span><span class="stat-value" id="accuracy">--%</span></div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn btn-start" id="start-btn">▶ Start</button>
+        <button class="btn btn-pause" id="pause-btn" style="display:none;">⏸ Pause</button>
+        <button class="btn btn-stop" id="stop-btn" style="display:none;">⏹ Stop</button>
       </div>
     </div>
     
-    <div class="setup-section">
-      <div class="setup-label">STARTING BPM</div>
-      <div class="option-buttons">
-        <button class="option-btn" data-bpm="60">60</button>
-        <button class="option-btn selected" data-bpm="80">80</button>
-        <button class="option-btn" data-bpm="100">100</button>
-        <button class="option-btn" data-bpm="120">120</button>
+    <div class="main-area">
+      <div class="track-container">
+        <canvas id="track"></canvas>
       </div>
+      <div class="detected-note" id="detected-note">--</div>
     </div>
-    
-    <div class="setup-section">
-      <div class="setup-label">NOTE PATTERN</div>
-      <div class="option-buttons">
-        <button class="option-btn selected" data-pattern="E">E only</button>
-        <button class="option-btn" data-pattern="EA">E-A</button>
-        <button class="option-btn" data-pattern="EADG">E-A-D-G</button>
-        <button class="option-btn" data-pattern="scale">Scale</button>
-      </div>
-    </div>
-    
-    <button class="start-btn" id="startBtn">START</button>
-    
-    <p style="margin-top: 30px; color: rgba(255,255,255,0.4); font-size: 0.9rem;">
-      BPM increases every 8 beats. How long can you keep up?
-    </p>
   </div>
   
-  <div class="game-over-screen hidden" id="gameOverScreen">
-    <h1 class="game-over-title">TIME'S UP!</h1>
-    <div class="final-stats">
-      Max BPM: <span id="maxBpm">0</span><br>
-      Hits: <span id="totalHits">0</span> / <span id="totalBeats">0</span>
-    </div>
-    <div class="accuracy-bar"><div class="accuracy-fill" id="accuracyFill"></div></div>
-    <p style="color: rgba(255,255,255,0.6); margin-bottom: 30px;">Accuracy: <span id="accuracyPct">0</span>%</p>
-    <button class="start-btn" onclick="location.reload()">TRY AGAIN</button>
-    <a href="index.html" style="color: rgba(255,255,255,0.5); margin-top: 20px; display: block;">← Back to Menu</a>
-  </div>
-  
-  <div class="container" id="gameContainer" style="display: none;">
-    <header>
-      <a href="index.html" class="back-link">← BASS LAB</a>
-      <h1>TREADMILL</h1>
-    </header>
-    
-    <div class="game-area">
-      <div class="bpm-display" id="bpmDisplay">80</div>
-      <div class="bpm-label">BPM</div>
-      
-      <div class="metronome-visual" id="metronomeVisual">
-        <div class="metro-dot downbeat"></div>
-        <div class="metro-dot"></div>
-        <div class="metro-dot"></div>
-        <div class="metro-dot"></div>
+  <div class="modal-overlay" id="pause-modal">
+    <div class="modal">
+      <h2>PAUSED</h2>
+      <div class="modal-stats">
+        <div><span class="label">Time Elapsed</span><span class="value" id="modal-time">0:00</span></div>
+        <div><span class="label">Notes Played</span><span class="value" id="modal-total">0</span></div>
+        <div><span class="label">Hits</span><span class="value good" id="modal-hits">0</span></div>
+        <div><span class="label">Misses</span><span class="value bad" id="modal-misses">0</span></div>
+        <div><span class="label">Accuracy</span><span class="value" id="modal-accuracy">--%</span></div>
+        <div><span class="label">Current BPM</span><span class="value" id="modal-bpm">60</span></div>
       </div>
-      
-      <div class="note-display" id="noteDisplay">E</div>
-      
-      <div class="timing-window" id="timingWindow">
-        <div class="timing-center"></div>
-      </div>
-      
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-value" id="hitCount">0</div>
-          <div class="stat-label">HITS</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="streakCount">0</div>
-          <div class="stat-label">STREAK</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="missCount">0</div>
-          <div class="stat-label">MISSES</div>
-        </div>
+      <div class="modal-buttons">
+        <button class="btn btn-start" id="resume-btn">▶ Resume</button>
+        <button class="btn btn-stop" id="end-btn">⏹ End</button>
       </div>
     </div>
   </div>
 
   <script>
+    const $ = id => document.getElementById(id);
+    
+    // Note names
     const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const A4_FREQ = 440;
-    const A4_MIDI = 69;
     
-    const PATTERNS = {
-      'E': ['E'],
-      'EA': ['E', 'A'],
-      'EADG': ['E', 'A', 'D', 'G'],
-      'scale': ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'] // E major
+    // Scale intervals
+    const SCALES = {
+      'major': [0, 2, 4, 5, 7, 9, 11],
+      'minor': [0, 2, 3, 5, 7, 8, 10],
+      'dorian': [0, 2, 3, 5, 7, 9, 10],
+      'phrygian': [0, 1, 3, 5, 7, 8, 10],
+      'lydian': [0, 2, 4, 6, 7, 9, 11],
+      'mixolydian': [0, 2, 4, 5, 7, 9, 10],
+      'locrian': [0, 1, 3, 5, 6, 8, 10],
+      'pentatonic-major': [0, 2, 4, 7, 9],
+      'pentatonic-minor': [0, 3, 5, 7, 10],
+      'blues': [0, 3, 5, 6, 7, 10]
     };
     
-    let config = {
-      mode: 1,
-      startBpm: 80,
-      pattern: 'E'
-    };
-    
+    // State
     let state = {
       running: false,
-      bpm: 80,
-      beat: 0,
-      totalBeats: 0,
+      paused: false,
+      startTime: 0,
+      pausedTime: 0,
+      bpm: 60,
+      baseBpm: 60,
+      acceleration: 0,
+      rootNote: 4,
+      scaleType: 'pentatonic-minor',
+      notes: [],
       hits: 0,
       misses: 0,
-      streak: 0,
-      maxStreak: 0,
-      currentNote: 'E',
-      nextNote: null, // for 2-note mode
-      lastBeatTime: 0,
-      noteIndex: 0,
-      beatsSinceIncrease: 0,
-      missesInWindow: 0
+      lastNoteTime: 0,
+      scaleNotes: [],
+      currentScaleIndex: 0
     };
     
-    let audioCtx;
-    let micState = {
-      enabled: false,
-      analyzer: null,
-      lastDetectedNote: null,
-      pitchHistory: [],
-      minRms: 0.02,
-      minCorrelation: 0.5
-    };
+    // Canvas
+    const canvas = $('track');
+    const ctx = canvas.getContext('2d');
     
-    // DOM
-    const $ = id => document.getElementById(id);
-    const setupScreen = $('setupScreen');
-    const gameOverScreen = $('gameOverScreen');
-    const gameContainer = $('gameContainer');
-    const bpmDisplay = $('bpmDisplay');
-    const noteDisplay = $('noteDisplay');
-    const hitCount = $('hitCount');
-    const streakCount = $('streakCount');
-    const missCount = $('missCount');
-    const timingWindow = $('timingWindow');
-    const metronomeVisual = $('metronomeVisual');
-    const micStatus = $('micStatus');
+    // Hit line position (percentage from left)
+    const HIT_LINE_X = 0.15;
+    const NOTE_RADIUS = 35;
+    const HIT_WINDOW = 80; // pixels
     
-    // Setup option buttons
-    document.querySelectorAll('.option-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const siblings = btn.parentElement.querySelectorAll('.option-btn');
-        siblings.forEach(s => s.classList.remove('selected'));
-        btn.classList.add('selected');
-        
-        if (btn.dataset.mode) config.mode = parseInt(btn.dataset.mode);
-        if (btn.dataset.bpm) config.startBpm = parseInt(btn.dataset.bpm);
-        if (btn.dataset.pattern) config.pattern = btn.dataset.pattern;
-      });
-    });
+    // Microphone
+    let audioCtx, analyser, micStream;
+    let lastDetectedNote = null;
+    let noteHeld = false;
     
-    $('startBtn').addEventListener('click', startGame);
-    
-    async function startGame() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      
-      // Setup mic
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
-        });
-        
-        const source = audioCtx.createMediaStreamSource(stream);
-        micState.analyzer = audioCtx.createAnalyser();
-        micState.analyzer.fftSize = 4096;
-        source.connect(micState.analyzer);
-        micState.enabled = true;
-        micStatus.textContent = 'MIC ACTIVE';
-        micStatus.classList.add('active');
-      } catch (err) {
-        alert('Microphone access required!');
-        return;
-      }
-      
-      // Init state
-      state = {
-        running: true,
-        bpm: config.startBpm,
-        beat: 0,
-        totalBeats: 0,
-        hits: 0,
-        misses: 0,
-        streak: 0,
-        maxStreak: 0,
-        currentNote: PATTERNS[config.pattern][0],
-        nextNote: config.mode === 2 ? PATTERNS[config.pattern][1 % PATTERNS[config.pattern].length] : null,
-        lastBeatTime: 0,
-        noteIndex: 0,
-        beatsSinceIncrease: 0,
-        missesInWindow: 0
-      };
-      
-      setupScreen.classList.add('hidden');
-      gameContainer.style.display = 'flex';
-      
-      updateDisplay();
-      
-      // Start game loop
-      state.lastBeatTime = performance.now();
-      requestAnimationFrame(gameLoop);
+    function resize() {
+      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
     }
     
-    function gameLoop(now) {
-      if (!state.running) return;
-      
-      // Check for note detection
-      detectPitch();
-      
-      const beatInterval = 60000 / state.bpm;
-      const elapsed = now - state.lastBeatTime;
-      
-      // Check if we're in the hit window (±100ms of beat)
-      const timeToBeat = beatInterval - elapsed;
-      const hitWindow = 150; // ms
-      
-      if (elapsed >= beatInterval) {
-        // Beat happened
-        onBeat();
-        state.lastBeatTime = now - (elapsed - beatInterval);
-      }
-      
-      requestAnimationFrame(gameLoop);
-    }
-    
-    function onBeat() {
-      state.beat = (state.beat + 1) % 4;
-      state.totalBeats++;
-      state.beatsSinceIncrease++;
-      
-      // Visual metronome
-      const dots = metronomeVisual.querySelectorAll('.metro-dot');
-      dots.forEach((d, i) => d.classList.toggle('active', i === state.beat));
-      
-      // Play click
-      playClick(state.beat === 0);
-      
-      // Pulse BPM display
-      bpmDisplay.classList.add('beat');
-      setTimeout(() => bpmDisplay.classList.remove('beat'), 100);
-      
-      // Check if note was hit
-      if (!state.hitThisBeat) {
-        state.misses++;
-        state.streak = 0;
-        state.missesInWindow++;
-        noteDisplay.classList.add('miss');
-        setTimeout(() => noteDisplay.classList.remove('miss'), 200);
-        
-        // Game over after 3 misses in a row
-        if (state.missesInWindow >= 3) {
-          endGame();
-          return;
+    function getScaleNotes() {
+      const root = state.rootNote;
+      const intervals = SCALES[state.scaleType];
+      const notes = [];
+      // Generate 2 octaves
+      for (let oct = 0; oct < 2; oct++) {
+        for (const interval of intervals) {
+          notes.push({
+            midi: 40 + root + interval + (oct * 12), // Bass range starting E1
+            name: NOTE_NAMES[(root + interval) % 12]
+          });
         }
       }
+      return notes;
+    }
+    
+    function spawnNote() {
+      const scaleNote = state.scaleNotes[state.currentScaleIndex];
+      state.currentScaleIndex = (state.currentScaleIndex + 1) % state.scaleNotes.length;
       
-      state.hitThisBeat = false;
-      
-      // Advance note
-      advanceNote();
-      
-      // Increase BPM every 8 beats
-      if (state.beatsSinceIncrease >= 8) {
-        state.bpm += 5;
-        state.beatsSinceIncrease = 0;
-        bpmDisplay.style.color = '#fc0';
-        setTimeout(() => bpmDisplay.style.color = '#0fc', 500);
+      state.notes.push({
+        x: canvas.offsetWidth + NOTE_RADIUS,
+        name: scaleNote.name,
+        midi: scaleNote.midi,
+        hit: null, // null = pending, true = hit, false = miss
+        scored: false
+      });
+    }
+    
+    function updateBpm(elapsed) {
+      if (state.acceleration > 0) {
+        const minutesElapsed = elapsed / 60000;
+        state.bpm = Math.min(200, state.baseBpm + (state.acceleration * minutesElapsed));
       }
-      
-      updateDisplay();
+      $('current-bpm').textContent = Math.round(state.bpm);
     }
     
-    function advanceNote() {
-      const pattern = PATTERNS[config.pattern];
-      state.noteIndex = (state.noteIndex + 1) % pattern.length;
-      state.currentNote = pattern[state.noteIndex];
-      
-      if (config.mode === 2) {
-        state.nextNote = pattern[(state.noteIndex + 1) % pattern.length];
-        noteDisplay.textContent = state.currentNote + ' → ' + state.nextNote;
-      } else {
-        noteDisplay.textContent = state.currentNote;
-      }
-    }
-    
-    function onNoteDetected(noteName) {
-      if (!state.running) return;
-      
-      // Check if it matches current note
-      const matches = noteName === state.currentNote || 
-        (noteName === 'Eb' && state.currentNote === 'D#') ||
-        (noteName === 'D#' && state.currentNote === 'Eb');
-      
-      if (matches && !state.hitThisBeat) {
-        state.hitThisBeat = true;
-        state.hits++;
-        state.streak++;
-        state.maxStreak = Math.max(state.maxStreak, state.streak);
-        state.missesInWindow = 0;
-        
-        noteDisplay.classList.add('hit');
-        setTimeout(() => noteDisplay.classList.remove('hit'), 200);
-        
-        // Show timing hit
-        showTimingHit();
-        
-        updateDisplay();
-      }
-    }
-    
-    function showTimingHit() {
-      const hit = document.createElement('div');
-      hit.className = 'timing-hit';
-      hit.style.left = '50%';
-      hit.style.background = '#0f8';
-      timingWindow.appendChild(hit);
-      setTimeout(() => hit.remove(), 1000);
-    }
-    
-    function updateDisplay() {
-      bpmDisplay.textContent = state.bpm;
-      hitCount.textContent = state.hits;
-      streakCount.textContent = state.streak;
-      missCount.textContent = state.misses;
-    }
-    
-    function endGame() {
-      state.running = false;
-      gameContainer.style.display = 'none';
-      gameOverScreen.classList.remove('hidden');
-      
-      const accuracy = state.totalBeats > 0 ? Math.round((state.hits / state.totalBeats) * 100) : 0;
-      
-      $('maxBpm').textContent = state.bpm;
-      $('totalHits').textContent = state.hits;
-      $('totalBeats').textContent = state.totalBeats;
-      $('accuracyPct').textContent = accuracy;
-      $('accuracyFill').style.width = accuracy + '%';
-    }
-    
-    function playClick(downbeat) {
-      if (!audioCtx) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = downbeat ? 1000 : 800;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.05);
+    function updateStats() {
+      $('hits').textContent = state.hits;
+      $('misses').textContent = state.misses;
+      const total = state.hits + state.misses;
+      const acc = total > 0 ? Math.round((state.hits / total) * 100) : 0;
+      $('accuracy').textContent = total > 0 ? acc + '%' : '--%';
     }
     
     // Pitch detection
-    function detectPitch() {
-      if (!micState.analyzer) return;
-      
-      const buffer = new Float32Array(micState.analyzer.fftSize);
-      micState.analyzer.getFloatTimeDomainData(buffer);
-      
-      const result = autoCorrelate(buffer, audioCtx.sampleRate);
-      
-      if (result.frequency > 30 && result.frequency < 400 && result.confidence > micState.minCorrelation) {
-        const midi = Math.round(12 * Math.log2(result.frequency / A4_FREQ) + A4_MIDI);
-        const noteName = NOTE_NAMES[midi % 12];
-        
-        if (isPitchStable(midi)) {
-          if (noteName !== micState.lastDetectedNote) {
-            micState.lastDetectedNote = noteName;
-            onNoteDetected(noteName);
-          }
-        }
-      } else {
-        micState.pitchHistory = [];
-        micState.lastDetectedNote = null;
-      }
-    }
-    
-    function isPitchStable(midi) {
-      micState.pitchHistory.push(midi);
-      if (micState.pitchHistory.length > 3) micState.pitchHistory.shift();
-      if (micState.pitchHistory.length < 3) return false;
-      
-      const target = micState.pitchHistory[2];
-      return micState.pitchHistory.every(m => Math.abs(m - target) <= 1);
-    }
-    
-    function autoCorrelate(buffer, sampleRate) {
+    function detectPitch(buffer, sampleRate) {
       const SIZE = buffer.length;
       let rms = 0;
       for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
       rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.01) return null;
       
-      if (rms < micState.minRms) return { frequency: -1, confidence: 0 };
-      
-      const yinBufferSize = Math.floor(SIZE / 2);
-      const yinBuffer = new Float32Array(yinBufferSize);
-      
-      for (let tau = 0; tau < yinBufferSize; tau++) {
-        yinBuffer[tau] = 0;
-        for (let i = 0; i < yinBufferSize; i++) {
-          const delta = buffer[i] - buffer[i + tau];
-          yinBuffer[tau] += delta * delta;
+      let bestCorrelation = 0, bestOffset = -1;
+      for (let offset = 50; offset < SIZE / 2; offset++) {
+        let correlation = 0;
+        for (let i = 0; i < SIZE / 2; i++) {
+          correlation += Math.abs(buffer[i] - buffer[i + offset]);
+        }
+        correlation = 1 - correlation / (SIZE / 2);
+        if (correlation > bestCorrelation) {
+          bestCorrelation = correlation;
+          bestOffset = offset;
         }
       }
       
-      yinBuffer[0] = 1;
-      let runningSum = 0;
-      for (let tau = 1; tau < yinBufferSize; tau++) {
-        runningSum += yinBuffer[tau];
-        yinBuffer[tau] *= tau / runningSum;
+      if (bestCorrelation > 0.9 && bestOffset > 0) {
+        return sampleRate / bestOffset;
       }
-      
-      let tauEstimate = -1;
-      for (let tau = 2; tau < yinBufferSize; tau++) {
-        if (yinBuffer[tau] < 0.4) {
-          while (tau + 1 < yinBufferSize && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
-          tauEstimate = tau;
-          break;
-        }
-      }
-      
-      if (tauEstimate === -1) return { frequency: -1, confidence: 0 };
-      
-      let betterTau = tauEstimate;
-      if (tauEstimate > 0 && tauEstimate < yinBufferSize - 1) {
-        const s0 = yinBuffer[tauEstimate - 1];
-        const s1 = yinBuffer[tauEstimate];
-        const s2 = yinBuffer[tauEstimate + 1];
-        betterTau = tauEstimate + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
-      }
-      
-      return { 
-        frequency: sampleRate / betterTau, 
-        confidence: 1 - yinBuffer[tauEstimate] 
-      };
+      return null;
     }
+    
+    function freqToMidi(freq) {
+      return Math.round(12 * Math.log2(freq / 440) + 69);
+    }
+    
+    function midiToName(midi) {
+      return NOTE_NAMES[midi % 12];
+    }
+    
+    function processMic() {
+      if (!analyser || !state.running || state.paused) {
+        requestAnimationFrame(processMic);
+        return;
+      }
+      
+      const buffer = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(buffer);
+      const freq = detectPitch(buffer, audioCtx.sampleRate);
+      
+      if (freq && freq > 30 && freq < 500) {
+        const midi = freqToMidi(freq);
+        const noteName = midiToName(midi);
+        
+        $('detected-note').textContent = noteName;
+        $('detected-note').className = 'detected-note';
+        
+        if (noteName !== lastDetectedNote) {
+          lastDetectedNote = noteName;
+          noteHeld = false;
+        }
+        
+        // Check for hits
+        if (!noteHeld) {
+          const hitLineX = canvas.offsetWidth * HIT_LINE_X;
+          for (const note of state.notes) {
+            if (note.hit === null && !note.scored) {
+              const dist = Math.abs(note.x - hitLineX);
+              if (dist < HIT_WINDOW && note.name === noteName) {
+                note.hit = true;
+                note.scored = true;
+                state.hits++;
+                noteHeld = true;
+                $('detected-note').className = 'detected-note hit';
+                updateStats();
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        lastDetectedNote = null;
+        noteHeld = false;
+      }
+      
+      requestAnimationFrame(processMic);
+    }
+    
+    async function initMic() {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        const source = audioCtx.createMediaStreamSource(micStream);
+        source.connect(analyser);
+        processMic();
+        return true;
+      } catch (e) {
+        alert('Microphone access required for pitch detection');
+        return false;
+      }
+    }
+    
+    function update(dt, now) {
+      const hitLineX = canvas.offsetWidth * HIT_LINE_X;
+      const speed = (state.bpm / 60) * 150; // pixels per second based on BPM
+      
+      // Move notes
+      for (const note of state.notes) {
+        note.x -= speed * (dt / 1000);
+        
+        // Mark as miss if passed hit line without being hit
+        if (note.hit === null && note.x < hitLineX - HIT_WINDOW) {
+          note.hit = false;
+          note.scored = true;
+          state.misses++;
+          updateStats();
+        }
+      }
+      
+      // Remove notes that left the screen
+      state.notes = state.notes.filter(n => n.x > -NOTE_RADIUS * 2);
+      
+      // Spawn new notes
+      const beatInterval = 60000 / state.bpm;
+      if (now - state.lastNoteTime > beatInterval) {
+        spawnNote();
+        state.lastNoteTime = now;
+      }
+    }
+    
+    function render() {
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      
+      // Clear
+      ctx.fillStyle = '#0a1a1a';
+      ctx.fillRect(0, 0, w, h);
+      
+      // Grid lines
+      ctx.strokeStyle = 'rgba(0,255,204,0.1)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      
+      // Hit line
+      const hitLineX = w * HIT_LINE_X;
+      ctx.strokeStyle = '#0fc';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#0fc';
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.moveTo(hitLineX, 0);
+      ctx.lineTo(hitLineX, h);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      
+      // Hit zone indicator
+      ctx.fillStyle = 'rgba(0,255,204,0.1)';
+      ctx.fillRect(hitLineX - HIT_WINDOW, 0, HIT_WINDOW * 2, h);
+      
+      // Notes
+      const centerY = h / 2;
+      for (const note of state.notes) {
+        ctx.save();
+        ctx.translate(note.x, centerY);
+        
+        // Circle
+        ctx.beginPath();
+        ctx.arc(0, 0, NOTE_RADIUS, 0, Math.PI * 2);
+        
+        if (note.hit === true) {
+          // Hit - green fill
+          ctx.fillStyle = 'rgba(0,255,100,0.8)';
+          ctx.strokeStyle = '#0f8';
+          ctx.shadowColor = '#0f8';
+          ctx.shadowBlur = 20;
+        } else if (note.hit === false) {
+          // Miss - red fill
+          ctx.fillStyle = 'rgba(255,50,50,0.8)';
+          ctx.strokeStyle = '#f55';
+          ctx.shadowColor = '#f55';
+          ctx.shadowBlur = 20;
+        } else {
+          // Pending
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.strokeStyle = '#0fc';
+          ctx.shadowColor = '#0fc';
+          ctx.shadowBlur = 10;
+        }
+        
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        // Note name
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 24px "Syne Mono"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(note.name, 0, 0);
+        
+        ctx.restore();
+      }
+      
+      // Scale info
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '14px "Syne Mono"';
+      ctx.textAlign = 'right';
+      const rootName = NOTE_NAMES[state.rootNote];
+      const scaleName = $('scale-type').selectedOptions[0].text;
+      ctx.fillText(`${rootName} ${scaleName}`, w - 20, 30);
+    }
+    
+    let lastTime = 0;
+    function loop(time) {
+      if (!state.running) return;
+      
+      if (state.paused) {
+        requestAnimationFrame(loop);
+        return;
+      }
+      
+      const dt = lastTime ? time - lastTime : 16;
+      lastTime = time;
+      
+      const elapsed = time - state.startTime - state.pausedTime;
+      updateBpm(elapsed);
+      update(dt, time);
+      render();
+      
+      requestAnimationFrame(loop);
+    }
+    
+    async function start() {
+      if (!audioCtx) {
+        const ok = await initMic();
+        if (!ok) return;
+      }
+      
+      state.running = true;
+      state.paused = false;
+      state.startTime = performance.now();
+      state.pausedTime = 0;
+      state.baseBpm = parseInt($('start-bpm').value) || 60;
+      state.bpm = state.baseBpm;
+      state.acceleration = parseFloat($('acceleration').value) || 0;
+      state.rootNote = parseInt($('root-note').value);
+      state.scaleType = $('scale-type').value;
+      state.scaleNotes = getScaleNotes();
+      state.currentScaleIndex = 0;
+      state.notes = [];
+      state.hits = 0;
+      state.misses = 0;
+      state.lastNoteTime = 0;
+      lastTime = 0;
+      
+      updateStats();
+      
+      $('start-btn').style.display = 'none';
+      $('pause-btn').style.display = 'block';
+      $('stop-btn').style.display = 'block';
+      
+      // Disable settings while running
+      $('root-note').disabled = true;
+      $('scale-type').disabled = true;
+      $('start-bpm').disabled = true;
+      $('acceleration').disabled = true;
+      
+      requestAnimationFrame(loop);
+    }
+    
+    let pauseStart = 0;
+    function pause() {
+      state.paused = true;
+      pauseStart = performance.now();
+      
+      // Update modal stats
+      const elapsed = performance.now() - state.startTime - state.pausedTime;
+      const mins = Math.floor(elapsed / 60000);
+      const secs = Math.floor((elapsed % 60000) / 1000);
+      $('modal-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+      $('modal-total').textContent = state.hits + state.misses;
+      $('modal-hits').textContent = state.hits;
+      $('modal-misses').textContent = state.misses;
+      const total = state.hits + state.misses;
+      $('modal-accuracy').textContent = total > 0 ? Math.round((state.hits / total) * 100) + '%' : '--%';
+      $('modal-bpm').textContent = Math.round(state.bpm);
+      
+      $('pause-modal').classList.add('visible');
+    }
+    
+    function resume() {
+      state.pausedTime += performance.now() - pauseStart;
+      state.paused = false;
+      $('pause-modal').classList.remove('visible');
+    }
+    
+    function stop() {
+      state.running = false;
+      state.paused = false;
+      state.notes = [];
+      
+      $('pause-modal').classList.remove('visible');
+      $('start-btn').style.display = 'block';
+      $('pause-btn').style.display = 'none';
+      $('stop-btn').style.display = 'none';
+      
+      // Re-enable settings
+      $('root-note').disabled = false;
+      $('scale-type').disabled = false;
+      $('start-bpm').disabled = false;
+      $('acceleration').disabled = false;
+      
+      render();
+    }
+    
+    // Event listeners
+    $('start-btn').addEventListener('click', start);
+    $('pause-btn').addEventListener('click', pause);
+    $('stop-btn').addEventListener('click', stop);
+    $('resume-btn').addEventListener('click', resume);
+    $('end-btn').addEventListener('click', stop);
+    
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space' && state.running) {
+        e.preventDefault();
+        state.paused ? resume() : pause();
+      }
+    });
+    
+    window.addEventListener('resize', resize);
+    resize();
+    render();
   </script>
 </body>
 </html>
