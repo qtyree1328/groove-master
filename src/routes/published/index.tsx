@@ -41,7 +41,7 @@ function PublishedPage() {
 
   const loadProjects = useCallback(async () => {
     try {
-      const res = await fetch('/api/projects?status=built')
+      const res = await fetch('/api/projects?status=published')
       if (res.ok) {
         const data = await res.json()
         setProjects(data.projects || [])

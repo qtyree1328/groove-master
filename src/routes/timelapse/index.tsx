@@ -74,12 +74,22 @@ interface FrameData {
   loaded: boolean
   error?: string
   imageData?: string
+  cloudScore?: number
+}
+
+interface DrawnBounds {
+  north: number
+  south: number
+  east: number
+  west: number
 }
 
 function TimelapsePage() {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileLayerRef = useRef<any>(null)
+  const drawnItemsRef = useRef<any>(null)
+  const drawControlRef = useRef<any>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   
   const [selectedLayer, setSelectedLayer] = useState(GIBS_LAYERS[0])
@@ -90,6 +100,14 @@ function TimelapsePage() {
   const [mapZoom, setMapZoom] = useState(4)
   const [mapReady, setMapReady] = useState(false)
   
+  // New: Drawn bounds state
+  const [drawnBounds, setDrawnBounds] = useState<DrawnBounds | null>(null)
+  const [useDrawnBounds, setUseDrawnBounds] = useState(false)
+  
+  // New: Cloud filter state
+  const [cloudFilter, setCloudFilter] = useState<number>(100) // 0-100, max cloud coverage allowed
+  const [skipCloudy, setSkipCloudy] = useState(false)
+  
   const [frames, setFrames] = useState<FrameData[]>([])
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -98,7 +116,7 @@ function TimelapsePage() {
   
   const [playing, setPlaying] = useState(false)
   const [currentFrame, setCurrentFrame] = useState(0)
-  const [playbackSpeed, setPlaybackSpeed] = useState(500) // ms per frame
+  const [playbackSpeed, setPlaybackSpeed] = useState(500)
   const playingRef = useRef(false)
   
   const [exportStatus, setExportStatus] = useState('')
@@ -112,25 +130,32 @@ function TimelapsePage() {
     setStartDate(start.toISOString().split('T')[0])
   }, [])
 
-  // Initialize map
+  // Initialize map with Leaflet Draw
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
 
     const initMap = async () => {
       const L = (await import('leaflet')).default
+      await import('leaflet/dist/leaflet.css')
+      
+      // Import Leaflet Draw
+      await import('leaflet-draw')
+      await import('leaflet-draw/dist/leaflet.draw.css')
       
       const map = L.map(mapRef.current!, {
         center: [20, 0],
         zoom: 3,
+        zoomControl: true,
+        attributionControl: true,
       })
 
-      // Base layer (for reference)
+      // Base layer with better tiles
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 19,
       }).addTo(map)
 
-      // GIBS layer (initially with today's date)
+      // GIBS layer
       const today = new Date().toISOString().split('T')[0]
       const gibsUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${selectedLayer.id}/default/${today}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.${selectedLayer.format}`
       
@@ -141,6 +166,57 @@ function TimelapsePage() {
       }).addTo(map)
 
       tileLayerRef.current = gibsLayer
+      
+      // Initialize Leaflet Draw
+      const drawnItems = new L.FeatureGroup()
+      map.addLayer(drawnItems)
+      drawnItemsRef.current = drawnItems
+      
+      const drawControl = new (L as any).Control.Draw({
+        position: 'topleft',
+        draw: {
+          polygon: false,
+          polyline: false,
+          circle: false,
+          circlemarker: false,
+          marker: false,
+          rectangle: {
+            shapeOptions: {
+              color: '#00ff88',
+              weight: 2,
+              fillOpacity: 0.1,
+            }
+          }
+        },
+        edit: {
+          featureGroup: drawnItems,
+          remove: true,
+        }
+      })
+      map.addControl(drawControl)
+      drawControlRef.current = drawControl
+      
+      // Handle draw events
+      map.on((L as any).Draw.Event.CREATED, (e: any) => {
+        const layer = e.layer
+        drawnItems.clearLayers()
+        drawnItems.addLayer(layer)
+        
+        const bounds = layer.getBounds()
+        setDrawnBounds({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        })
+        setUseDrawnBounds(true)
+      })
+      
+      map.on((L as any).Draw.Event.DELETED, () => {
+        setDrawnBounds(null)
+        setUseDrawnBounds(false)
+      })
+      
       mapInstanceRef.current = map
       
       map.on('moveend', () => {
@@ -189,6 +265,28 @@ function TimelapsePage() {
     return dates
   }, [startDate, endDate, interval])
 
+  // Estimate cloud coverage from image brightness variance
+  const estimateCloudCoverage = (imageData: ImageData): number => {
+    const data = imageData.data
+    let brightPixels = 0
+    let totalPixels = 0
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const brightness = (r + g + b) / 3
+      
+      // High brightness often indicates clouds
+      if (brightness > 200) {
+        brightPixels++
+      }
+      totalPixels++
+    }
+    
+    return Math.round((brightPixels / totalPixels) * 100)
+  }
+
   // Generate timelapse frames
   const generateTimelapse = async () => {
     const dates = generateDates()
@@ -218,14 +316,23 @@ function TimelapsePage() {
     const map = mapInstanceRef.current
     if (!map) return
     
-    const bounds = map.getBounds()
-    const zoom = Math.min(map.getZoom(), 9) // GIBS max zoom is 9
+    // Use drawn bounds if available, otherwise use map view
+    let bounds: any
+    if (useDrawnBounds && drawnBounds) {
+      const L = (await import('leaflet')).default
+      bounds = L.latLngBounds(
+        [drawnBounds.south, drawnBounds.west],
+        [drawnBounds.north, drawnBounds.east]
+      )
+    } else {
+      bounds = map.getBounds()
+    }
     
-    // Calculate tile coordinates for current view
+    const zoom = Math.min(map.getZoom(), 9)
+    
     const nw = bounds.getNorthWest()
     const se = bounds.getSouthEast()
     
-    // Convert to tile coordinates
     const tileSize = 256
     const scale = Math.pow(2, zoom)
     
@@ -234,7 +341,7 @@ function TimelapsePage() {
     const seTileX = Math.floor((se.lng + 180) / 360 * scale)
     const seTileY = Math.floor((1 - Math.log(Math.tan(se.lat * Math.PI / 180) + 1 / Math.cos(se.lat * Math.PI / 180)) / Math.PI) / 2 * scale)
     
-    const tilesX = Math.min(seTileX - nwTileX + 1, 8) // Limit tiles
+    const tilesX = Math.min(seTileX - nwTileX + 1, 8)
     const tilesY = Math.min(seTileY - nwTileY + 1, 8)
     
     canvas.width = tilesX * tileSize
@@ -249,8 +356,6 @@ function TimelapsePage() {
       ctx.fillStyle = '#1a1a1a'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      let success = true
-      
       // Fetch tiles for this date
       for (let tx = 0; tx < tilesX; tx++) {
         for (let ty = 0; ty < tilesY; ty++) {
@@ -262,39 +367,49 @@ function TimelapsePage() {
           try {
             const img = await loadImage(url)
             ctx.drawImage(img, tx * tileSize, ty * tileSize)
-          } catch (e) {
-            // Draw placeholder for missing tile
+          } catch {
             ctx.fillStyle = '#333'
             ctx.fillRect(tx * tileSize, ty * tileSize, tileSize, tileSize)
           }
         }
       }
       
-      // Add date label
-      ctx.fillStyle = 'rgba(0,0,0,0.7)'
-      ctx.fillRect(10, canvas.height - 40, 150, 30)
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 16px monospace'
-      ctx.fillText(date, 20, canvas.height - 18)
+      // Calculate cloud coverage estimate
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const cloudScore = estimateCloudCoverage(imageData)
       
-      // Store frame data
-      const imageData = canvas.toDataURL('image/jpeg', 0.85)
+      // Skip frame if cloud filter is enabled and coverage is too high
+      if (skipCloudy && cloudScore > cloudFilter) {
+        continue
+      }
+      
+      // Add date label and cloud score
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'
+      ctx.fillRect(10, canvas.height - 40, 200, 30)
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 14px monospace'
+      ctx.fillText(`${date}  ☁️ ${cloudScore}%`, 20, canvas.height - 18)
+      
+      const frameImageData = canvas.toDataURL('image/jpeg', 0.85)
       newFrames.push({
         date,
         loaded: true,
-        imageData,
+        imageData: frameImageData,
+        cloudScore,
       })
       
-      // Update frames state incrementally
       setFrames([...newFrames])
     }
     
     setProgress(100)
     setGenerating(false)
     setFrames(newFrames)
+    
+    if (newFrames.length === 0) {
+      setError('No frames generated. Try reducing cloud filter threshold.')
+    }
   }
 
-  // Load image helper
   const loadImage = (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image()
@@ -329,14 +444,12 @@ function TimelapsePage() {
     }
   }, [playing, frames.length, playbackSpeed])
 
-  // Update map when current frame changes
   useEffect(() => {
     if (frames.length > 0 && frames[currentFrame]) {
       updateGibsLayer(frames[currentFrame].date, selectedLayer.id, selectedLayer.format)
     }
   }, [currentFrame, frames, selectedLayer, updateGibsLayer])
 
-  // Load preset
   const loadPreset = (preset: typeof PRESETS[0]) => {
     if (!mapInstanceRef.current) return
     
@@ -344,22 +457,34 @@ function TimelapsePage() {
     
     const layer = GIBS_LAYERS.find(l => l.id === preset.layer)
     if (layer) setSelectedLayer(layer)
+    
+    // Clear drawn bounds when loading preset
+    if (drawnItemsRef.current) {
+      drawnItemsRef.current.clearLayers()
+    }
+    setDrawnBounds(null)
+    setUseDrawnBounds(false)
+  }
+  
+  const clearDrawnBounds = () => {
+    if (drawnItemsRef.current) {
+      drawnItemsRef.current.clearLayers()
+    }
+    setDrawnBounds(null)
+    setUseDrawnBounds(false)
   }
 
-  // Export as GIF (simplified - creates downloadable frames)
   const exportFrames = async () => {
     if (frames.length === 0) return
     
     setExportStatus('Preparing download...')
     
-    // Create a zip-like bundle or single animated image
-    // For now, download current frame
     const link = document.createElement('a')
     link.download = `timelapse_${selectedLayer.id}_${startDate}_${endDate}.jpg`
     link.href = frames[currentFrame].imageData || ''
     link.click()
     
-    setExportStatus('Frame downloaded! (Full GIF export coming soon)')
+    setExportStatus('Frame downloaded!')
     setTimeout(() => setExportStatus(''), 3000)
   }
 
@@ -458,6 +583,60 @@ function TimelapsePage() {
                 </p>
               </div>
             </div>
+            
+            {/* NEW: Cloud Filter */}
+            <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
+              <h3 className="font-semibold mb-3 text-slate-300">☁️ Cloud Filter</h3>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={skipCloudy}
+                    onChange={(e) => setSkipCloudy(e.target.checked)}
+                    className="rounded border-slate-600"
+                  />
+                  <span className="text-sm">Skip cloudy frames</span>
+                </label>
+                {skipCloudy && (
+                  <div>
+                    <label className="text-xs text-slate-500">Max cloud coverage: {cloudFilter}%</label>
+                    <input
+                      type="range"
+                      min={10}
+                      max={100}
+                      value={cloudFilter}
+                      onChange={(e) => setCloudFilter(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Frames with &gt;{cloudFilter}% bright pixels will be skipped
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* NEW: Bounds Drawing Status */}
+            {drawnBounds && (
+              <div className="bg-slate-900 rounded-lg p-4 border border-emerald-800/50">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-emerald-400">✏️ Custom Bounds</h3>
+                  <button
+                    onClick={clearDrawnBounds}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Using drawn rectangle for timelapse area
+                </p>
+                <p className="text-xs text-slate-500 mt-1 font-mono">
+                  {drawnBounds.north.toFixed(2)}°N, {drawnBounds.south.toFixed(2)}°S<br/>
+                  {drawnBounds.west.toFixed(2)}°W, {drawnBounds.east.toFixed(2)}°E
+                </p>
+              </div>
+            )}
 
             {/* Presets */}
             <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
@@ -499,7 +678,7 @@ function TimelapsePage() {
             <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
               <div className="px-4 py-2 border-b border-slate-800 flex items-center justify-between">
                 <span className="text-sm text-slate-400">
-                  Pan and zoom to select area
+                  {drawnBounds ? '✏️ Using drawn bounds' : 'Pan and zoom to select area, or draw a rectangle'}
                 </span>
                 <span className="text-xs text-slate-500">
                   {mapCenter.lat.toFixed(2)}, {mapCenter.lng.toFixed(2)} | z{mapZoom}
@@ -516,10 +695,12 @@ function TimelapsePage() {
                   <span className="text-sm text-slate-400">
                     Frame {currentFrame + 1} / {frames.length}
                     {frames[currentFrame] && ` • ${frames[currentFrame].date}`}
+                    {frames[currentFrame]?.cloudScore !== undefined && (
+                      <span className="ml-2 text-slate-500">☁️ {frames[currentFrame].cloudScore}%</span>
+                    )}
                   </span>
                 </div>
                 
-                {/* Frame display */}
                 <div className="relative bg-slate-950">
                   {frames[currentFrame]?.imageData && (
                     <img 
@@ -530,7 +711,6 @@ function TimelapsePage() {
                   )}
                 </div>
                 
-                {/* Controls */}
                 <div className="p-4 border-t border-slate-800">
                   <div className="flex items-center gap-4">
                     <button
@@ -595,7 +775,6 @@ function TimelapsePage() {
               </div>
             )}
 
-            {/* Hidden canvas for frame generation */}
             <canvas ref={canvasRef} className="hidden" />
           </div>
         </div>
@@ -612,17 +791,17 @@ function TimelapsePage() {
               </p>
             </div>
             <div>
-              <h3 className="font-semibold text-white mb-2">🛰️ Sensors</h3>
+              <h3 className="font-semibold text-white mb-2">✏️ Drawing Bounds</h3>
               <p>
-                <strong>MODIS:</strong> 250m-1km resolution, daily coverage since 2000.<br/>
-                <strong>VIIRS:</strong> 375m resolution, daily coverage since 2015.
+                Use the rectangle tool (top-left of map) to draw a custom area for your timelapse.
+                This gives you precise control over the capture region.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold text-white mb-2">💡 Tips</h3>
+              <h3 className="font-semibold text-white mb-2">☁️ Cloud Filter</h3>
               <p>
-                Use presets for interesting locations. Weekly interval works best for 
-                seasonal changes. NDVI shows vegetation health over time.
+                Enable cloud filtering to skip frames with high cloud coverage.
+                The filter estimates cloudiness from image brightness.
               </p>
             </div>
           </div>
