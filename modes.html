@@ -198,7 +198,7 @@
     }
     
     .fretboard {
-      background: linear-gradient(180deg, #3d2817 0%, #2a1a0f 100%);
+      background: #1a1a1a;
       border-radius: 12px;
       padding: 15px;
       border: 2px solid rgba(255,255,255,0.1);
@@ -209,38 +209,42 @@
     .fret-row {
       display: flex;
       align-items: center;
-      height: 36px;
+      height: 40px;
       position: relative;
     }
     
     .string-label {
-      width: 24px;
-      min-width: 24px;
+      width: 28px;
+      min-width: 28px;
       font-size: 0.85rem;
       color: rgba(255,255,255,0.7);
       font-weight: bold;
+      text-align: center;
     }
     
     .frets {
-      display: flex;
+      display: grid;
+      grid-template-columns: 40px repeat(15, 1fr);
       flex: 1;
       position: relative;
+      height: 100%;
     }
     
     .fret {
-      flex: 1;
       height: 100%;
-      border-right: 2px solid #888;
+      border-left: 3px solid #666;
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 0;
     }
     
     .fret:first-child {
-      border-right: 4px solid #f5f5dc;
-      flex: 0.5;
+      border-left: 5px solid #f5f5dc;
+    }
+    
+    .fret:last-child {
+      border-right: 3px solid #666;
     }
     
     .string-line {
@@ -248,24 +252,25 @@
       left: 0;
       right: 0;
       height: 3px;
-      background: linear-gradient(90deg, #ccc, #888);
+      background: #999;
       top: 50%;
       transform: translateY(-50%);
+      z-index: 1;
     }
     
-    .fret-row:nth-child(1) .string-line { height: 4px; background: #ddd; }
-    .fret-row:nth-child(2) .string-line { height: 3.5px; }
+    .fret-row:nth-child(1) .string-line { height: 4px; background: #ccc; }
+    .fret-row:nth-child(2) .string-line { height: 3.5px; background: #bbb; }
     .fret-row:nth-child(3) .string-line { height: 3px; background: #aaa; }
     .fret-row:nth-child(4) .string-line { height: 2.5px; background: #999; }
     
     .note-marker {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: bold;
       position: relative;
       z-index: 10;
@@ -279,42 +284,53 @@
     .note-marker.played {
       background: #00ff66 !important;
       box-shadow: 0 0 15px #00ff66;
-      transform: scale(1.2);
+      transform: scale(1.15);
+    }
+    
+    .detected-note {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      color: #00ffcc;
+      z-index: 100;
     }
     
     .fret-numbers {
-      display: flex;
-      padding-left: 24px;
+      display: grid;
+      grid-template-columns: 28px 40px repeat(15, 1fr);
       margin-top: 8px;
     }
     
     .fret-num {
-      flex: 1;
       text-align: center;
       font-size: 0.7rem;
       color: rgba(255,255,255,0.4);
     }
     
-    .fret-num:first-child { flex: 0.5; }
+    .fret-num:first-child { grid-column: 2; }
     
     .fret-markers {
-      display: flex;
-      padding-left: 24px;
+      display: grid;
+      grid-template-columns: 28px 40px repeat(15, 1fr);
       margin-top: 4px;
     }
     
     .fret-marker-dot {
-      flex: 1;
       display: flex;
       justify-content: center;
     }
     
-    .fret-marker-dot:first-child { flex: 0.5; }
+    .fret-marker-dot:first-child { grid-column: 2; }
     
     .fret-marker-dot span {
       width: 6px;
       height: 6px;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.3);
       border-radius: 50%;
     }
     
@@ -455,6 +471,9 @@
         <input type="checkbox" id="showAllPositions" checked>
         <label for="showAllPositions">Show all fret positions</label>
       </div>
+      
+      <!-- Detected note indicator -->
+      <div class="detected-note" id="detectedNote">🎤 --</div>
 
       <!-- Controls -->
       <div class="controls">
@@ -553,6 +572,108 @@
       
       // Toggle listener
       showAllPositions.addEventListener('change', renderFretboard);
+      
+      // Microphone setup
+      setupMicrophone();
+    }
+    
+    // Microphone pitch detection
+    let audioContext, analyser, micStream;
+    let lastDetectedNote = null;
+    
+    async function setupMicrophone() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        micStream = stream;
+        
+        midiStatus.textContent = '🎤 Mic Ready';
+        midiStatus.classList.add('connected');
+        keyboardHint.classList.add('hidden');
+        
+        requestAnimationFrame(processMic);
+      } catch (err) {
+        console.log('Mic not available:', err);
+      }
+    }
+    
+    function processMic() {
+      if (!analyser) {
+        requestAnimationFrame(processMic);
+        return;
+      }
+      
+      const buffer = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(buffer);
+      
+      const pitch = detectPitch(buffer, audioContext.sampleRate);
+      const noteDisplay = document.getElementById('detectedNote');
+      
+      if (pitch > 0) {
+        const noteNum = Math.round(12 * Math.log2(pitch / 440) + 69);
+        const noteName = NOTE_NAMES[noteNum % 12];
+        
+        if (noteDisplay) noteDisplay.textContent = '🎤 ' + noteName;
+        
+        if (selectedKey && noteName !== lastDetectedNote) {
+          lastDetectedNote = noteName;
+          noteOn(noteName);
+        }
+      } else {
+        lastDetectedNote = null;
+        if (noteDisplay) noteDisplay.textContent = '🎤 --';
+      }
+      
+      requestAnimationFrame(processMic);
+    }
+    
+    function detectPitch(buffer, sampleRate) {
+      // Autocorrelation pitch detection
+      let SIZE = buffer.length;
+      let rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.01) return -1;
+      
+      let r1 = 0, r2 = SIZE - 1;
+      const threshold = 0.2;
+      for (let i = 0; i < SIZE / 2; i++) {
+        if (Math.abs(buffer[i]) < threshold) { r1 = i; break; }
+      }
+      for (let i = 1; i < SIZE / 2; i++) {
+        if (Math.abs(buffer[SIZE - i]) < threshold) { r2 = SIZE - i; break; }
+      }
+      
+      buffer = buffer.slice(r1, r2);
+      SIZE = buffer.length;
+      
+      const c = new Array(SIZE).fill(0);
+      for (let i = 0; i < SIZE; i++) {
+        for (let j = 0; j < SIZE - i; j++) {
+          c[i] += buffer[j] * buffer[j + i];
+        }
+      }
+      
+      let d = 0;
+      while (c[d] > c[d + 1]) d++;
+      
+      let maxval = -1, maxpos = -1;
+      for (let i = d; i < SIZE; i++) {
+        if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+      }
+      
+      let T0 = maxpos;
+      const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+      const a = (x1 + x3 - 2 * x2) / 2;
+      const b = (x3 - x1) / 2;
+      if (a) T0 -= b / (2 * a);
+      
+      return sampleRate / T0;
     }
 
     function getNoteIndex(name) {
