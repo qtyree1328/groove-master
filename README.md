@@ -1,73 +1,35 @@
-# 🦀 Crabwalk
+# 🦀 Command Center
 
-Real-time companion monitor for [Moltbot (Clawdbot)](https://github.com/moltbot/moltbot) agents by [@luccasveg](https://x.com/luccasveg).
-
-Watch your AI agents work across WhatsApp, Telegram, Discord, and Slack in a live node graph. See thinking states, tool calls, and response chains as they happen.
-
-![Crabwalk Home](public/home.png)
-
-![Crabwalk Monitor](public/monitor.png)
+Personal dashboard and project hub for Quintin Tyree.
 
 ## Features
 
-- **Live activity graph** - ReactFlow visualization of agent sessions and action chains
-- **Multi-platform** - Monitor agents across all messaging platforms simultaneously
-- **Real-time streaming** - WebSocket connection to clawdbot gateway
-- **Action tracing** - Expand nodes to inspect tool args and payloads
-- **Session filtering** - Filter by platform, search by recipient
+- **Hub** - Central dashboard with quick access to all tools
+- **Morning Briefing** - Daily summary with TTS
+- **Job Hunter** - GIS/RS job tracking and management
+- **Kanban** - Task board for work tracking
+- **Projects** - Ideas → Builds → Published workflow
+- **News & Trends** - Industry research and job market analysis
+- **Bass Practice** - Music theory training (Modes, Circle of 4ths, Bass Invaders)
+- **Quick Sketch** - Map drawing tool for GeoJSON export
+- **Timelapse** - NASA GIBS satellite imagery timelapse generator
+- **Ocean Monitor** - Satellite oceanography for whale-ml project
+- **Calendar** - Events and AI suggestions
+- **Real-time Monitor** - Clawdbot activity visualization
 
-## Installation
-
-### Docker (recommended)
-
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -e CLAWDBOT_API_TOKEN=your-token \
-  -e CLAWDBOT_URL=ws://host.docker.internal:18789 \
-  ghcr.io/luccast/crabwalk:latest
-```
-
-> Note: When running Crabwalk in Docker, the Clawdbot gateway typically runs on the *host*.
-> Use `CLAWDBOT_URL=ws://host.docker.internal:18789` so the container can connect.
-
-Or with docker-compose:
+## Development
 
 ```bash
-curl -O https://raw.githubusercontent.com/luccast/crabwalk/master/docker-compose.yml
-CLAWDBOT_API_TOKEN=your-token CLAWDBOT_URL=ws://host.docker.internal:18789 docker-compose up -d
-```
-
-### From source
-
-```bash
-git clone https://github.com/luccast/crabwalk.git
-cd crabwalk
 npm install
-CLAWDBOT_API_TOKEN=your-token npm run dev
+npm run dev
 ```
 
-Open `http://localhost:3000/monitor`
-
-## Configuration
-
-Requires clawdbot gateway running on the same machine.
-
-### Gateway Token
-
-Find your token in the clawdbot config file:
-
-```bash
-# Look for gateway.auth.token
-cat ~/.clawdbot/clawdbot.json | rg "gateway\.auth\.token"
-```
-
-Or copy it directly:
-
-```bash
-export CLAWDBOT_API_TOKEN=$(python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.clawdbot/clawdbot.json')))['gateway']['auth']['token'])")
-```
+Open `http://localhost:3000`
 
 ## Stack
 
-TanStack Start, ReactFlow, Framer Motion, tRPC, TanStack DB
+TanStack Start, React, Tailwind CSS, Framer Motion
+
+## Repository
+
+GitHub: [qtyree1328/groove-master](https://github.com/qtyree1328/groove-master)
