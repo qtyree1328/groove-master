@@ -489,7 +489,7 @@
       shake: 0, heldNotes: new Set()
     };
     
-    let player = { x: 0, y: 0 };
+    let player = { x: 0, y: 0, targetAngle: -Math.PI/2, currentAngle: -Math.PI/2 };
     let audioCtx, wrongNoteTimeout;
     
     // Load bass image
@@ -962,6 +962,10 @@
       const dx = targetX - player.x;
       const dy = targetY - player.y;
       const dist = hypot(dx, dy);
+      
+      // Update player's target angle (headstock points toward target)
+      // atan2 gives angle from positive x-axis, we want top of bass to point at target
+      player.targetAngle = Math.atan2(dy, dx) + Math.PI/2;
       const segments = Math.floor(dist / 30) + 3;
       
       for (let i = 1; i < segments; i++) {
@@ -1446,23 +1450,31 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
       
-      // Bass guitar (player) - using custom image
+      // Smoothly interpolate bass rotation toward target
+      const angleDiff = player.targetAngle - player.currentAngle;
+      // Normalize angle difference to [-PI, PI]
+      const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      player.currentAngle += normalizedDiff * 0.15; // Smooth rotation speed
+      
+      // Bass guitar (player) - using custom image with dynamic rotation
       const bassScale = getUIScale();
       ctx.save();
       ctx.translate(player.x, player.y);
-      const glowRadius = 70 * bassScale;
+      ctx.rotate(player.currentAngle);
+      
+      const glowRadius = 100 * bassScale;
       const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
-      grad.addColorStop(0, 'rgba(255,136,0,0.4)');
-      grad.addColorStop(0.5, 'rgba(255,136,0,0.15)');
+      grad.addColorStop(0, 'rgba(255,136,0,0.5)');
+      grad.addColorStop(0.4, 'rgba(255,136,0,0.2)');
       grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad;
       ctx.beginPath(); ctx.arc(0, 0, glowRadius, 0, Math.PI * 2); ctx.fill();
       
       if (bassImageLoaded) {
-        // Draw the bass image (facing up, so headstock is at top)
-        const imgWidth = 80 * bassScale;
-        const imgHeight = 120 * bassScale;
-        ctx.shadowColor = '#f80'; ctx.shadowBlur = 15 * bassScale;
+        // Draw the bass image larger - headstock (top) points in rotation direction
+        const imgWidth = 140 * bassScale;
+        const imgHeight = 210 * bassScale;
+        ctx.shadowColor = '#f80'; ctx.shadowBlur = 25 * bassScale;
         ctx.drawImage(bassImage, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
         ctx.shadowBlur = 0;
       } else {
