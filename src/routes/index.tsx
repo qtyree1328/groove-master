@@ -284,6 +284,18 @@ function CommandCenter() {
             name="Quick Sketch" 
             desc="Draw & export GeoJSON"
           />
+          <NavCard 
+            to="/timelapse" 
+            icon="🛰️" 
+            name="Timelapse" 
+            desc="Satellite imagery timelapses"
+          />
+          <NavCard 
+            to="/ocean" 
+            icon="🌊" 
+            name="Ocean Monitor" 
+            desc="SST & Chlorophyll for whale-ml"
+          />
         </div>
 
         {/* Two Column Layout */}
