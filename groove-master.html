@@ -960,6 +960,9 @@
       state.notes = state.notes.filter(n => now < n.targetTime + 1000);
     }
     
+    // Animation state
+    let animTime = 0;
+    
     function render() {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
@@ -971,44 +974,48 @@
       const fretWidth = w / NUM_FRETS;
       const hitLineX = fretWidth * HIT_FRET + fretWidth / 2;
       
-      // Black background
-      ctx.fillStyle = '#0a0a0a';
+      // Pure black background
+      ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);
       
-      // Draw ALL vertical fret lines from left to right edge
-      ctx.strokeStyle = '#444';
-      ctx.lineWidth = 2;
-      for (let i = 0; i <= NUM_FRETS; i++) {
-        const x = i * fretWidth;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
+      // Mathematical animation background (flowing particle field)
+      animTime += 0.004;
+      ctx.save();
+      for (let i = 0; i < 3000; i++) {
+        const t = animTime;
+        const ix = i / 100;
+        const baseX = Math.sin(ix * 2.1 + t) * Math.cos(ix * 0.7 + t * 0.5);
+        const baseY = Math.cos(ix * 1.3 + t * 0.8) * Math.sin(ix * 0.9 + t * 0.3);
+        const dist = Math.sqrt(baseX * baseX + baseY * baseY);
+        
+        if (dist < 1.2) {
+          const px = w * 0.5 + baseX * w * 0.35;
+          const py = h * 0.5 + baseY * h * 0.4;
+          const alpha = 0.03 + (1 - dist) * 0.06;
+          const size = 0.5 + (1 - dist) * 1.5;
+          
+          ctx.fillStyle = `rgba(0, 150, 255, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(px, py, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
+      ctx.restore();
       
-      // Horizontal strings (4 bass strings)
-      const stringSpacing = h / 5;
-      for (let i = 0; i < 4; i++) {
-        const y = stringSpacing * (i + 1);
-        ctx.strokeStyle = STRING_COLORS[i];
-        ctx.lineWidth = 3 - i * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-      
-      // Hit zone - highlight the target fret
-      ctx.fillStyle = 'rgba(0,150,255,0.15)';
+      // Subtle hit zone glow
+      ctx.fillStyle = 'rgba(0,150,255,0.06)';
       ctx.fillRect(HIT_FRET * fretWidth, 0, fretWidth, h);
       
-      // Hit line (center of hit fret)
+      // Hit line (single vertical bar)
       ctx.strokeStyle = '#0096ff';
       ctx.lineWidth = 3;
+      ctx.shadowColor = '#0096ff';
+      ctx.shadowBlur = 15;
       ctx.beginPath();
       ctx.moveTo(hitLineX, 0);
       ctx.lineTo(hitLineX, h);
       ctx.stroke();
+      ctx.shadowBlur = 0;
       
       // Draw notes - position based on time until target
       const noteY = h / 2;
