@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Metronome - Bass Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Syne+Mono&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2a 100%);
+      min-height: 100vh;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+    
+    /* ─── Side Panel ─── */
+    .side-panel {
+      width: 340px;
+      min-width: 340px;
+      background: rgba(255,255,255,0.04);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .panel-title {
+      font-family: 'Syne Mono', monospace;
+      font-size: 1.3rem;
+      background: linear-gradient(135deg, #ff8800, #ff00aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .back-link {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 0.8rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #ff8800; }
+    
+    .setting-group {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    
+    .setting-group label {
+      display: block;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 600;
+    }
+    
+    .setting-group select,
+    .setting-group input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    
+    .setting-group select:focus,
+    .setting-group input:focus {
+      outline: none;
+      border-color: #ff8800;
+    }
+    
+    .setting-group select option { background: #1a1a2e; }
+    
+    .setting-row {
+      display: flex;
+      gap: 10px;
+    }
+    .setting-row .setting-group { flex: 1; }
+    
+    .section-label {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.3);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 6px;
+    }
+    
+    /* Volume slider */
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .volume-row input[type="range"] {
+      flex: 1;
+      accent-color: #ff8800;
+      height: 4px;
+    }
+    .volume-row span {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.6);
+      min-width: 28px;
+      text-align: right;
+    }
+    
+    /* Drum pattern selector */
+    .pattern-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    
+    .pattern-btn {
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.7);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .pattern-btn:hover {
+      border-color: rgba(255,136,0,0.4);
+      background: rgba(255,136,0,0.08);
+    }
+    .pattern-btn.active {
+      border-color: #ff8800;
+      background: rgba(255,136,0,0.15);
+      color: #ff8800;
+    }
+    
+    /* Key buttons */
+    .key-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .key-btn {
+      padding: 8px 4px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: rgba(255,255,255,0.7);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .key-btn:hover {
+      border-color: rgba(170,0,255,0.4);
+    }
+    .key-btn.active {
+      border-color: #aa00ff;
+      background: rgba(170,0,255,0.15);
+      color: #aa00ff;
+    }
+    
+    /* ─── Main Area ─── */
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Animated background */
+    .bg-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      opacity: 0.15;
+    }
+    
+    /* Beat display */
+    .beat-display {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+    }
+    
+    .bpm-display {
+      font-size: clamp(6rem, 15vw, 12rem);
+      font-weight: 900;
+      line-height: 1;
+      color: rgba(255,255,255,0.15);
+      transition: color 0.08s;
+      user-select: none;
+    }
+    .bpm-display.flash {
+      color: rgba(255,255,255,0.9);
+    }
+    .bpm-display.flash-accent {
+      color: #ff8800;
+    }
+    
+    .bpm-label {
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-top: -20px;
+    }
+    
+    .beat-dots {
+      display: flex;
+      gap: 20px;
+    }
+    
+    .beat-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.1);
+      transition: all 0.08s;
+    }
+    .beat-dot.active {
+      background: #ff8800;
+      border-color: #ff8800;
+      box-shadow: 0 0 20px rgba(255,136,0,0.6);
+    }
+    .beat-dot.active.accent {
+      background: #ff00aa;
+      border-color: #ff00aa;
+      box-shadow: 0 0 20px rgba(255,0,170,0.6);
+    }
+    
+    .time-sig-big {
+      font-size: 1.8rem;
+      color: rgba(255,255,255,0.25);
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    
+    /* Play button */
+    .play-btn {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff8800, #ff5500);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(255,136,0,0.3);
+    }
+    .play-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 30px rgba(255,136,0,0.5);
+    }
+    .play-btn:active { transform: scale(0.95); }
+    
+    .play-btn svg {
+      width: 32px;
+      height: 32px;
+      fill: white;
+    }
+    
+    /* Now playing info */
+    .now-playing {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+      text-align: center;
+      color: rgba(255,255,255,0.4);
+      font-size: 0.85rem;
+    }
+    .now-playing .track-name {
+      color: rgba(255,255,255,0.7);
+      font-weight: 600;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app { flex-direction: column; }
+      .side-panel {
+        width: 100%;
+        min-width: unset;
+        max-height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+  <div class="app">
+    <div class="side-panel">
+      <div class="panel-header">
+        <div class="panel-title">🥁 Metronome</div>
+        <a href="./" class="back-link">← Bass Lab</a>
+      </div>
+
+      <!-- BPM / Time Signature -->
+      <div class="setting-row">
+        <div class="setting-group">
+          <label>Start BPM</label>
+          <input type="number" id="bpm" value="90" min="30" max="300" step="1">
+        </div>
+        <div class="setting-group">
+          <label>Time Signature</label>
+          <select id="time-sig">
+            <option value="4/4">4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="2/4">2/4</option>
+            <option value="5/4">5/4</option>
+            <option value="6/8">6/8</option>
+            <option value="7/8">7/8</option>
+            <option value="7/4">7/4</option>
+            <option value="9/8">9/8</option>
+            <option value="12/8">12/8</option>
+            <option value="5/8">5/8</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-group">
+          <label>Acceleration (BPM/min)</label>
+          <input type="number" id="accel" value="0" min="0" max="20" step="0.5">
+        </div>
+        <div class="setting-group">
+          <label>Click Sound</label>
+          <select id="click-sound">
+            <option value="wood">Wood Block</option>
+            <option value="classic">Classic Click</option>
+            <option value="hihat">Hi-Hat</option>
+            <option value="rim">Rim Shot</option>
+            <option value="cowbell">Cowbell</option>
+            <option value="silent">Silent</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>Click Volume</label>
+        <div class="volume-row">
+          <input type="range" id="click-vol" min="0" max="100" value="70">
+          <span id="click-vol-label">70%</span>
+        </div>
+      </div>
+
+      <!-- Drum Patterns -->
+      <div class="section-label">🥁 Drum Loops</div>
+      <div class="setting-group">
+        <label>Drum Pattern (syncs to BPM)</label>
+        <div class="pattern-grid">
+          <button class="pattern-btn" data-pattern="none">None</button>
+          <button class="pattern-btn" data-pattern="rock">Rock</button>
+          <button class="pattern-btn" data-pattern="funk">Funk</button>
+          <button class="pattern-btn" data-pattern="jazz">Jazz Ride</button>
+          <button class="pattern-btn" data-pattern="latin">Latin</button>
+          <button class="pattern-btn" data-pattern="hiphop">Hip Hop</button>
+          <button class="pattern-btn" data-pattern="shuffle">Shuffle</button>
+          <button class="pattern-btn" data-pattern="bossa">Bossa Nova</button>
+          <button class="pattern-btn" data-pattern="reggae">Reggae</button>
+          <button class="pattern-btn" data-pattern="waltz">Waltz (3/4)</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>Drum Volume</label>
+        <div class="volume-row">
+          <input type="range" id="drum-vol" min="0" max="100" value="60">
+          <span id="drum-vol-label">60%</span>
+        </div>
+      </div>
+
+      <!-- Bass Drone -->
+      <div class="section-label">🎸 Bass Drone / Root</div>
+      <div class="setting-group">
+        <label>Key (plays a sustained bass root)</label>
+        <div class="key-grid">
+          <button class="key-btn" data-key="-1">Off</button>
+          <button class="key-btn" data-key="0">C</button>
+          <button class="key-btn" data-key="1">C#</button>
+          <button class="key-btn" data-key="2">D</button>
+          <button class="key-btn" data-key="3">Eb</button>
+          <button class="key-btn" data-key="4">E</button>
+          <button class="key-btn" data-key="5">F</button>
+          <button class="key-btn" data-key="6">F#</button>
+          <button class="key-btn" data-key="7">G</button>
+          <button class="key-btn" data-key="8">Ab</button>
+          <button class="key-btn" data-key="9">A</button>
+          <button class="key-btn" data-key="10">Bb</button>
+          <button class="key-btn" data-key="11">B</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>Drone Volume</label>
+        <div class="volume-row">
+          <input type="range" id="drone-vol" min="0" max="100" value="30">
+          <span id="drone-vol-label">30%</span>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>Drone Type</label>
+        <select id="drone-type">
+          <option value="bass">Deep Bass</option>
+          <option value="organ">Organ Pad</option>
+          <option value="fifth">Root + Fifth</option>
+          <option value="chord">Major Chord Pad</option>
+          <option value="minor-chord">Minor Chord Pad</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="main-area">
+      <canvas class="bg-canvas" id="bg"></canvas>
+
+      <div class="beat-display">
+        <div class="time-sig-big" id="time-sig-label">4 / 4</div>
+        <div class="bpm-display" id="bpm-big">90</div>
+        <div class="bpm-label">BPM</div>
+        <div class="beat-dots" id="beat-dots"></div>
+        <button class="play-btn" id="play-btn">
+          <svg viewBox="0 0 24 24" id="play-icon"><polygon points="5,3 19,12 5,21"/></svg>
+        </button>
+      </div>
+
+      <div class="now-playing" id="now-playing"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    // ─── Audio Engine ───
+    let audioCtx;
+    let running = false;
+    let currentBeat = 0;
+    let nextBeatTime = 0;
+    let timerId = null;
+    let startTime = 0;
+    let baseBpm = 90;
+    let accel = 0;
+
+    // Gain nodes
+    let clickGain, drumGain, droneGain;
+    let droneOscillators = [];
+
+    // Current state
+    let beatsPerMeasure = 4;
+    let beatUnit = 4;
+    let drumPattern = 'none';
+    let selectedKey = -1;
+    let clickSound = 'wood';
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      clickGain = audioCtx.createGain();
+      clickGain.gain.value = 0.7;
+      clickGain.connect(audioCtx.destination);
+
+      drumGain = audioCtx.createGain();
+      drumGain.gain.value = 0.6;
+      drumGain.connect(audioCtx.destination);
+
+      droneGain = audioCtx.createGain();
+      droneGain.gain.value = 0.3;
+      droneGain.connect(audioCtx.destination);
+    }
+
+    // ─── Click Sounds ───
+    function playClick(time, isAccent) {
+      if (clickSound === 'silent') return;
+
+      const sounds = {
+        wood:    { freq: isAccent ? 1200 : 900,  type: 'triangle', decay: 0.04 },
+        classic: { freq: isAccent ? 1500 : 1000, type: 'square',   decay: 0.03 },
+        hihat:   { freq: isAccent ? 8000 : 6000, type: 'square',   decay: 0.05 },
+        rim:     { freq: isAccent ? 1800 : 1400, type: 'triangle', decay: 0.025 },
+        cowbell: { freq: isAccent ? 800 : 540,   type: 'square',   decay: 0.08 },
+      };
+
+      const s = sounds[clickSound];
+      const osc = audioCtx.createOscillator();
+      const env = audioCtx.createGain();
+
+      osc.type = s.type;
+      osc.frequency.setValueAtTime(s.freq, time);
+      if (clickSound === 'hihat') {
+        osc.frequency.exponentialRampToValueAtTime(2000, time + s.decay);
+      }
+
+      env.gain.setValueAtTime(isAccent ? 1.0 : 0.6, time);
+      env.gain.exponentialRampToValueAtTime(0.001, time + s.decay);
+
+      osc.connect(env);
+      env.connect(clickGain);
+      osc.start(time);
+      osc.stop(time + s.decay + 0.01);
+    }
+
+    // ─── Drum Synthesis ───
+    function playKick(time) {
+      const osc = audioCtx.createOscillator();
+      const env = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, time);
+      osc.frequency.exponentialRampToValueAtTime(40, time + 0.12);
+      env.gain.setValueAtTime(1.0, time);
+      env.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+      osc.connect(env); env.connect(drumGain);
+      osc.start(time); osc.stop(time + 0.35);
+    }
+
+    function playSnare(time) {
+      // Noise burst
+      const bufferSize = audioCtx.sampleRate * 0.08;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const noiseEnv = audioCtx.createGain();
+      noiseEnv.gain.setValueAtTime(0.8, time);
+      noiseEnv.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 1000;
+      noise.connect(filter); filter.connect(noiseEnv); noiseEnv.connect(drumGain);
+      noise.start(time); noise.stop(time + 0.15);
+
+      // Body tone
+      const osc = audioCtx.createOscillator();
+      const env = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(200, time);
+      osc.frequency.exponentialRampToValueAtTime(100, time + 0.06);
+      env.gain.setValueAtTime(0.6, time);
+      env.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+      osc.connect(env); env.connect(drumGain);
+      osc.start(time); osc.stop(time + 0.1);
+    }
+
+    function playHihat(time, open = false) {
+      const bufferSize = audioCtx.sampleRate * (open ? 0.15 : 0.04);
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      const env = audioCtx.createGain();
+      env.gain.setValueAtTime(open ? 0.35 : 0.25, time);
+      env.gain.exponentialRampToValueAtTime(0.001, time + (open ? 0.15 : 0.04));
+      const hp = audioCtx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 5000;
+      src.connect(hp); hp.connect(env); env.connect(drumGain);
+      src.start(time); src.stop(time + (open ? 0.2 : 0.06));
+    }
+
+    function playRide(time, bell = false) {
+      const bufferSize = audioCtx.sampleRate * 0.3;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      const env = audioCtx.createGain();
+      env.gain.setValueAtTime(bell ? 0.3 : 0.2, time);
+      env.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = bell ? 3000 : 6000;
+      bp.Q.value = 2;
+      src.connect(bp); bp.connect(env); env.connect(drumGain);
+      src.start(time); src.stop(time + 0.35);
+    }
+
+    // ─── Drum Patterns ───
+    // Each pattern: array of steps, each step = { k, s, h, ho, r, rb }
+    // k=kick, s=snare, h=hihat, ho=open hat, r=ride, rb=ride bell
+    // Patterns are 16 steps (16th notes in one measure of 4/4)
+    const drumPatterns = {
+      none: null,
+      rock: [
+        {k:1,h:1},{h:1},{s:1,h:1},{h:1},{k:1,h:1},{h:1},{s:1,h:1},{h:1},
+        {k:1,h:1},{h:1},{s:1,h:1},{h:1},{k:1,h:1},{k:1,h:1},{s:1,h:1},{h:1}
+      ],
+      funk: [
+        {k:1,h:1},{h:1},{},{s:1,h:1},{},{h:1},{k:1},{h:1},
+        {},{s:1,h:1},{},{h:1},{k:1,h:1},{},{s:1,h:1},{h:1}
+      ],
+      jazz: [
+        {r:1,k:1},{},{rb:1},{},{r:1},{},{rb:1},{},{r:1,k:1},{},{rb:1,s:1},{},{r:1},{},{rb:1},{}
+      ],
+      latin: [
+        {k:1,h:1},{},{h:1},{},{k:1,h:1},{h:1},{},{h:1},
+        {k:1,h:1},{},{h:1},{s:1},{k:1,h:1},{h:1},{},{h:1}
+      ],
+      hiphop: [
+        {k:1,h:1},{},{h:1},{},{s:1,h:1},{},{h:1},{k:1},
+        {h:1},{},{k:1,h:1},{},{s:1,h:1},{},{h:1},{h:1}
+      ],
+      shuffle: [
+        {k:1,h:1},{},{h:1},{},{s:1,h:1},{},{h:1},{},{k:1,h:1},{},{h:1},{},{s:1,h:1},{},{h:1},{}
+      ],
+      bossa: [
+        {k:1,r:1},{},{r:1},{},{r:1},{k:1},{r:1},{},
+        {s:1,r:1},{},{r:1},{k:1},{r:1},{},{s:1,r:1},{}
+      ],
+      reggae: [
+        {k:1},{},{},{ho:1},{s:1},{},{},{h:1},
+        {k:1},{},{},{ho:1},{s:1},{},{k:1},{h:1}
+      ],
+      waltz: [
+        {k:1,r:1},{},{},{},{rb:1},{},{rb:1},{},{},{},{rb:1},{}
+      ],
+    };
+
+    function scheduleDrumStep(time, step) {
+      if (!step) return;
+      if (step.k)  playKick(time);
+      if (step.s)  playSnare(time);
+      if (step.h)  playHihat(time, false);
+      if (step.ho) playHihat(time, true);
+      if (step.r)  playRide(time, false);
+      if (step.rb) playRide(time, true);
+    }
+
+    // ─── Drone ───
+    function startDrone() {
+      stopDrone();
+      if (selectedKey < 0) return;
+
+      const baseFreq = 41.2 * Math.pow(2, selectedKey / 12); // E1-based bass
+      const droneType = $('drone-type').value;
+
+      function makeOsc(freq, type = 'sine', vol = 0.5) {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.value = vol;
+        osc.connect(g);
+        g.connect(droneGain);
+        osc.start();
+        droneOscillators.push(osc);
+      }
+
+      switch (droneType) {
+        case 'bass':
+          makeOsc(baseFreq, 'sine', 0.6);
+          makeOsc(baseFreq * 2, 'sine', 0.2);
+          break;
+        case 'organ':
+          makeOsc(baseFreq * 2, 'sine', 0.35);
+          makeOsc(baseFreq * 4, 'triangle', 0.15);
+          makeOsc(baseFreq * 8, 'sine', 0.08);
+          break;
+        case 'fifth':
+          makeOsc(baseFreq, 'sine', 0.5);
+          makeOsc(baseFreq * 1.5, 'sine', 0.3);
+          break;
+        case 'chord':
+          makeOsc(baseFreq, 'sine', 0.4);
+          makeOsc(baseFreq * 2 * Math.pow(2, 4/12), 'sine', 0.2); // major 3rd
+          makeOsc(baseFreq * 2 * Math.pow(2, 7/12), 'sine', 0.2); // 5th
+          break;
+        case 'minor-chord':
+          makeOsc(baseFreq, 'sine', 0.4);
+          makeOsc(baseFreq * 2 * Math.pow(2, 3/12), 'sine', 0.2); // minor 3rd
+          makeOsc(baseFreq * 2 * Math.pow(2, 7/12), 'sine', 0.2); // 5th
+          break;
+      }
+    }
+
+    function stopDrone() {
+      droneOscillators.forEach(o => { try { o.stop(); } catch(e){} });
+      droneOscillators = [];
+    }
+
+    // ─── Scheduler ───
+    const scheduleAheadTime = 0.1;
+    const lookahead = 25; // ms
+
+    let drumStepIndex = 0;
+
+    function getCurrentBpm() {
+      if (!accel) return baseBpm;
+      const elapsed = (audioCtx.currentTime - startTime) / 60; // minutes
+      return baseBpm + accel * elapsed;
+    }
+
+    function getSecondsPerBeat() {
+      return 60.0 / getCurrentBpm();
+    }
+
+    function scheduler() {
+      while (nextBeatTime < audioCtx.currentTime + scheduleAheadTime) {
+        scheduleBeat(nextBeatTime, currentBeat);
+        advanceBeat();
+      }
+      timerId = setTimeout(scheduler, lookahead);
+    }
+
+    function scheduleBeat(time, beat) {
+      // Click
+      playClick(time, beat === 0);
+
+      // Drum pattern
+      const pattern = drumPatterns[drumPattern];
+      if (pattern) {
+        const stepsPerBeat = pattern.length / beatsPerMeasure;
+        for (let s = 0; s < stepsPerBeat; s++) {
+          const stepIdx = Math.floor(beat * stepsPerBeat + s) % pattern.length;
+          const stepTime = time + (s / stepsPerBeat) * getSecondsPerBeat();
+          scheduleDrumStep(stepTime, pattern[stepIdx]);
+        }
+      }
+
+      // Visual update
+      setTimeout(() => {
+        updateBeatVisual(beat);
+      }, (time - audioCtx.currentTime) * 1000);
+    }
+
+    function advanceBeat() {
+      nextBeatTime += getSecondsPerBeat();
+      currentBeat = (currentBeat + 1) % beatsPerMeasure;
+    }
+
+    function updateBeatVisual(beat) {
+      const bpmDisplay = $('bpm-big');
+      const currentBpmVal = Math.round(getCurrentBpm());
+      bpmDisplay.textContent = currentBpmVal;
+
+      bpmDisplay.classList.remove('flash', 'flash-accent');
+      void bpmDisplay.offsetWidth;
+      bpmDisplay.classList.add(beat === 0 ? 'flash-accent' : 'flash');
+      setTimeout(() => bpmDisplay.classList.remove('flash', 'flash-accent'), 100);
+
+      document.querySelectorAll('.beat-dot').forEach((dot, i) => {
+        dot.classList.remove('active', 'accent');
+        if (i === beat) {
+          dot.classList.add('active');
+          if (beat === 0) dot.classList.add('accent');
+        }
+      });
+    }
+
+    function buildBeatDots() {
+      const container = $('beat-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < beatsPerMeasure; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'beat-dot';
+        container.appendChild(dot);
+      }
+    }
+
+    // ─── Start / Stop ───
+    function start() {
+      initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      baseBpm = parseInt($('bpm').value) || 90;
+      accel = parseFloat($('accel').value) || 0;
+      const [b, u] = $('time-sig').value.split('/').map(Number);
+      beatsPerMeasure = b;
+      beatUnit = u;
+      clickSound = $('click-sound').value;
+
+      buildBeatDots();
+      $('time-sig-label').textContent = `${b} / ${u}`;
+      $('bpm-big').textContent = baseBpm;
+
+      currentBeat = 0;
+      drumStepIndex = 0;
+      startTime = audioCtx.currentTime;
+      nextBeatTime = audioCtx.currentTime;
+      running = true;
+
+      updatePlayButton();
+      startDrone();
+      scheduler();
+      updateNowPlaying();
+    }
+
+    function stop() {
+      running = false;
+      clearTimeout(timerId);
+      stopDrone();
+      updatePlayButton();
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active', 'accent'));
+      $('bpm-big').classList.remove('flash', 'flash-accent');
+      $('now-playing').textContent = '';
+    }
+
+    function toggle() {
+      if (running) stop(); else start();
+    }
+
+    function updatePlayButton() {
+      $('play-icon').innerHTML = running
+        ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+        : '<polygon points="5,3 19,12 5,21"/>';
+    }
+
+    function updateNowPlaying() {
+      const parts = [];
+      if (drumPattern !== 'none') parts.push(`🥁 ${drumPattern.charAt(0).toUpperCase() + drumPattern.slice(1)}`);
+      if (selectedKey >= 0) {
+        const keys = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+        parts.push(`🎸 ${keys[selectedKey]} ${$('drone-type').value}`);
+      }
+      $('now-playing').innerHTML = parts.length
+        ? `<span class="track-name">${parts.join('  •  ')}</span>`
+        : '';
+    }
+
+    // ─── Event Listeners ───
+    $('play-btn').addEventListener('click', toggle);
+
+    // Spacebar to toggle
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+
+    // Pattern buttons
+    document.querySelectorAll('.pattern-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        drumPattern = btn.dataset.pattern;
+        document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateNowPlaying();
+      });
+    });
+
+    // Key buttons
+    document.querySelectorAll('.key-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedKey = parseInt(btn.dataset.key);
+        document.querySelectorAll('.key-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (running) startDrone();
+        updateNowPlaying();
+      });
+    });
+
+    // Volume sliders
+    $('click-vol').addEventListener('input', (e) => {
+      const v = e.target.value / 100;
+      if (clickGain) clickGain.gain.value = v;
+      $('click-vol-label').textContent = e.target.value + '%';
+    });
+    $('drum-vol').addEventListener('input', (e) => {
+      const v = e.target.value / 100;
+      if (drumGain) drumGain.gain.value = v;
+      $('drum-vol-label').textContent = e.target.value + '%';
+    });
+    $('drone-vol').addEventListener('input', (e) => {
+      const v = e.target.value / 100;
+      if (droneGain) droneGain.gain.value = v;
+      $('drone-vol-label').textContent = e.target.value + '%';
+    });
+
+    // Drone type change
+    $('drone-type').addEventListener('change', () => {
+      if (running && selectedKey >= 0) startDrone();
+    });
+
+    // Live BPM change while running
+    $('bpm').addEventListener('change', () => {
+      if (running) { stop(); start(); }
+    });
+    $('time-sig').addEventListener('change', () => {
+      if (running) { stop(); start(); }
+    });
+    $('click-sound').addEventListener('change', () => {
+      clickSound = $('click-sound').value;
+    });
+
+    // ─── Background Animation ───
+    const canvas = $('bg');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let t = 0;
+    function animate() {
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      ctx.clearRect(0, 0, w, h);
+
+      // Concentric pulse rings
+      const numRings = 8;
+      const beatPhase = running ? (audioCtx?.currentTime || 0) * (getCurrentBpm() / 60) * Math.PI * 2 : t * 0.5;
+
+      for (let i = 0; i < numRings; i++) {
+        const phase = beatPhase + i * 0.8;
+        const radius = 50 + (Math.sin(phase) * 0.5 + 0.5) * Math.min(w, h) * 0.4;
+        const alpha = 0.03 + (Math.sin(phase) * 0.5 + 0.5) * 0.06;
+
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 136, 0, ${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Floating particles
+      for (let i = 0; i < 60; i++) {
+        const angle = (t * 0.2 + i * 1.1);
+        const r = 80 + Math.sin(t * 0.3 + i) * 150 + i * 2;
+        const x = w / 2 + Math.cos(angle) * r;
+        const y = h / 2 + Math.sin(angle * 0.7) * r * 0.6;
+        const size = 1 + Math.sin(t + i) * 0.5;
+
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 136, 0, ${0.08 + Math.sin(t + i * 0.5) * 0.04})`;
+        ctx.fill();
+      }
+
+      t += 0.008;
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Init defaults
+    document.querySelector('[data-pattern="none"]').classList.add('active');
+    document.querySelector('[data-key="-1"]').classList.add('active');
+    buildBeatDots();
+  </script>
+</body>
+</html>
