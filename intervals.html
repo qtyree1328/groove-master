@@ -316,7 +316,11 @@
         </div>
       </div>
       
-      <button class="play-btn" id="playRefBtn">🔊 PLAY REFERENCE</button>
+      <div style="display: flex; gap: 10px; justify-content: center; margin: 15px 0;">
+        <button class="play-btn" id="playRefBtn">🔊 REFERENCE</button>
+        <button class="play-btn" id="playTargetBtn" onclick="playTargetNote()">🎯 TARGET</button>
+        <button class="play-btn" id="playIntervalBtn" onclick="playInterval()">🎵 INTERVAL</button>
+      </div>
       
       <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin: 15px 0; color: rgba(255,255,255,0.6); font-size: 0.85rem;">
         <label>🎤 Sensitivity:</label>
@@ -469,20 +473,63 @@
       setTimeout(playReference, 500);
     }
     
-    function playReference() {
+    // Enhanced bass-like tone generator
+    function playTone(midiNote, duration = 0.8, volume = 0.3) {
       if (!audioCtx) return;
-      const freq = 440 * Math.pow(2, (state.refMidi - 69) / 12);
+      const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+      const now = audioCtx.currentTime;
       
-      const osc = audioCtx.createOscillator();
+      // Create bass-like sound with multiple oscillators
+      const fundamental = audioCtx.createOscillator();
+      const subOsc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.connect(gain);
+      const filter = audioCtx.createBiquadFilter();
+      
+      // Mix sawtooth (bright) with sine (sub)
+      fundamental.type = 'sawtooth';
+      subOsc.type = 'sine';
+      fundamental.frequency.value = freq;
+      subOsc.frequency.value = freq / 2; // Sub-octave for bass weight
+      
+      // Low-pass filter for warmth
+      filter.type = 'lowpass';
+      filter.frequency.value = freq * 4; // Allow some harmonics
+      filter.Q.value = 1.5;
+      
+      // Connect: oscillators → filter → gain → output
+      fundamental.connect(filter);
+      subOsc.connect(filter);
+      filter.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 1);
+      
+      // Bass-like envelope: quick attack, sustained, gentle release
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.02); // Fast attack
+      gain.gain.exponentialRampToValueAtTime(volume * 0.7, now + 0.1); // Slight decay
+      gain.gain.setValueAtTime(volume * 0.7, now + duration - 0.2); // Sustain
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration); // Release
+      
+      fundamental.start(now);
+      subOsc.start(now);
+      fundamental.stop(now + duration);
+      subOsc.stop(now + duration);
+    }
+    
+    function playReference() {
+      if (!audioCtx || !state.refMidi) return;
+      playTone(state.refMidi, 1.2, 0.4);
+    }
+    
+    function playTargetNote() {
+      if (!audioCtx || !state.targetMidi) return;
+      playTone(state.targetMidi, 1.2, 0.4);
+    }
+    
+    function playInterval() {
+      if (!audioCtx || !state.refMidi || !state.targetMidi) return;
+      // Play reference first, then target note
+      playTone(state.refMidi, 0.8, 0.3);
+      setTimeout(() => playTone(state.targetMidi, 0.8, 0.3), 900);
     }
     
     function checkAnswer(playedMidi) {

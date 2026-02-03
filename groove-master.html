@@ -22,11 +22,11 @@
       height: 100vh;
     }
     
-    /* Side Panel */
+    /* Side Panel - Lighter */
     .side-panel {
       width: 280px;
-      background: rgba(0,0,0,0.7);
-      border-right: 2px solid rgba(255,180,80,0.3);
+      background: rgba(40,40,50,0.9);
+      border-right: 2px solid rgba(0,150,255,0.4);
       padding: 20px;
       display: flex;
       flex-direction: column;
@@ -45,17 +45,17 @@
       text-decoration: none;
       font-size: 0.85rem;
     }
-    .back-link:hover { color: #fb4; }
+    .back-link:hover { color: #0096ff; }
     
     .panel-title {
       font-size: 1.1rem;
-      color: #fb4;
-      text-shadow: 0 0 10px rgba(255,180,80,0.5);
+      color: #0096ff;
+      text-shadow: 0 0 10px rgba(0,150,255,0.5);
     }
     
     .setting-group {
-      background: rgba(255,180,80,0.05);
-      border: 1px solid rgba(255,180,80,0.2);
+      background: rgba(0,150,255,0.05);
+      border: 1px solid rgba(0,150,255,0.2);
       border-radius: 10px;
       padding: 12px;
     }
@@ -74,9 +74,9 @@
       width: 100%;
       padding: 8px;
       background: rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,180,80,0.3);
+      border: 1px solid rgba(0,150,255,0.3);
       border-radius: 6px;
-      color: #fb4;
+      color: #0096ff;
       font-family: 'Syne Mono', monospace;
       font-size: 0.9rem;
     }
@@ -84,8 +84,8 @@
     .setting-group select:focus,
     .setting-group input:focus {
       outline: none;
-      border-color: #fb4;
-      box-shadow: 0 0 10px rgba(255,180,80,0.3);
+      border-color: #0096ff;
+      box-shadow: 0 0 10px rgba(0,150,255,0.3);
     }
     
     .setting-row {
@@ -103,11 +103,11 @@
     .checkbox-group input[type="checkbox"] {
       width: 18px;
       height: 18px;
-      accent-color: #fb4;
+      accent-color: #0096ff;
     }
     .checkbox-group label {
       margin: 0;
-      color: #fb4;
+      color: #0096ff;
       font-size: 0.85rem;
     }
     
@@ -115,7 +115,7 @@
       padding: 12px 16px;
       font-family: 'Syne Mono', monospace;
       font-size: 0.9rem;
-      border: 2px solid #fb4;
+      border: 2px solid #0096ff;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
@@ -123,13 +123,13 @@
     }
     
     .btn-start {
-      background: rgba(255,180,80,0.2);
-      color: #fb4;
+      background: rgba(0,150,255,0.2);
+      color: #0096ff;
     }
     .btn-start:hover {
-      background: #fb4;
+      background: #0096ff;
       color: #000;
-      box-shadow: 0 0 20px rgba(255,180,80,0.5);
+      box-shadow: 0 0 20px rgba(0,150,255,0.5);
     }
     
     .btn-pause {
@@ -175,17 +175,18 @@
     .live-stats div:last-child { margin-bottom: 0; }
     
     .stat-label { color: rgba(255,255,255,0.5); }
-    .stat-value { color: #fb4; }
+    .stat-value { color: #0096ff; }
     .stat-value.good { color: #8f8; }
     .stat-value.bad { color: #f66; }
     
-    /* Main Area - Fretboard Style */
+    /* Main Area - Blade Runner Style */
     .main-area {
       flex: 1;
       display: flex;
       flex-direction: column;
       position: relative;
-      background: linear-gradient(180deg, #1a0a00 0%, #2a1508 50%, #1a0a00 100%);
+      background: #000;
+      border-top: 1px solid rgba(0,150,255,0.3);
     }
     
     /* Time Signature Display */
@@ -198,7 +199,7 @@
       flex-direction: column;
       align-items: center;
       background: rgba(0,0,0,0.6);
-      border: 2px solid rgba(255,180,80,0.4);
+      border: 2px solid rgba(0,150,255,0.4);
       border-radius: 12px;
       padding: 12px 20px;
     }
@@ -206,15 +207,15 @@
     .time-sig-number {
       font-size: 2.5rem;
       font-weight: bold;
-      color: #fb4;
+      color: #0096ff;
       line-height: 1;
-      text-shadow: 0 0 15px rgba(255,180,80,0.5);
+      text-shadow: 0 0 15px rgba(0,150,255,0.5);
     }
     
     .time-sig-line {
       width: 100%;
       height: 3px;
-      background: #fb4;
+      background: #0096ff;
       margin: 4px 0;
     }
     
@@ -232,14 +233,14 @@
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: rgba(255,180,80,0.2);
-      border: 2px solid rgba(255,180,80,0.4);
+      background: rgba(0,150,255,0.2);
+      border: 2px solid rgba(0,150,255,0.4);
       transition: all 0.1s;
     }
     
     .beat-dot.active {
-      background: #fb4;
-      box-shadow: 0 0 15px rgba(255,180,80,0.8);
+      background: #0096ff;
+      box-shadow: 0 0 15px rgba(0,150,255,0.8);
     }
     
     .beat-dot.downbeat {
@@ -273,7 +274,7 @@
     }
     
     .metronome-flash.tick {
-      background: linear-gradient(90deg, transparent, #fb4, transparent);
+      background: linear-gradient(90deg, transparent, #0096ff, transparent);
     }
     
     .metronome-flash.downbeat {
@@ -298,12 +299,12 @@
     
     .modal {
       background: linear-gradient(135deg, #2a1a0a, #1a0a00);
-      border: 2px solid #fb4;
+      border: 2px solid #0096ff;
       border-radius: 20px;
       padding: 40px;
       min-width: 350px;
       text-align: center;
-      box-shadow: 0 0 60px rgba(255,180,80,0.3);
+      box-shadow: 0 0 60px rgba(0,150,255,0.3);
     }
     
     .modal h2 {
@@ -327,7 +328,7 @@
     }
     
     .modal-stats .label { color: rgba(255,255,255,0.6); }
-    .modal-stats .value { color: #fb4; font-weight: bold; }
+    .modal-stats .value { color: #0096ff; font-weight: bold; }
     .modal-stats .value.good { color: #8f8; }
     .modal-stats .value.bad { color: #f66; }
     
@@ -348,12 +349,12 @@
       left: 50%;
       transform: translateX(-50%);
       font-size: 2rem;
-      color: #fb4;
-      text-shadow: 0 0 20px rgba(255,180,80,0.8);
+      color: #0096ff;
+      text-shadow: 0 0 20px rgba(0,150,255,0.8);
       background: rgba(0,0,0,0.7);
       padding: 10px 30px;
       border-radius: 10px;
-      border: 2px solid rgba(255,180,80,0.4);
+      border: 2px solid rgba(0,150,255,0.4);
     }
     
     .detected-note.hit { color: #8f8; border-color: #8f8; }
@@ -367,7 +368,7 @@
         flex-direction: row;
         flex-wrap: wrap;
         border-right: none;
-        border-bottom: 2px solid rgba(255,180,80,0.3);
+        border-bottom: 2px solid rgba(0,150,255,0.3);
         padding: 10px;
         gap: 8px;
       }
@@ -519,8 +520,8 @@
       
       <div class="setting-row" style="justify-content: center; gap: 12px;">
         <label style="color: rgba(255,255,255,0.6);">🎤 Sensitivity:</label>
-        <input type="range" id="sensitivity" min="1" max="100" value="50" style="width: 100px; accent-color: #fb4;">
-        <span id="sensitivityValue" style="color: #fb4; min-width: 24px;">50</span>
+        <input type="range" id="sensitivity" min="1" max="100" value="50" style="width: 100px; accent-color: #0096ff;">
+        <span id="sensitivityValue" style="color: #0096ff; min-width: 24px;">50</span>
         <div style="width: 50px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
           <div id="levelFill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #00ff66, #ffcc00, #ff4444);"></div>
         </div>
@@ -998,11 +999,11 @@
       }
       
       // Hit zone - highlight the target fret
-      ctx.fillStyle = 'rgba(255,180,80,0.15)';
+      ctx.fillStyle = 'rgba(0,150,255,0.15)';
       ctx.fillRect(HIT_FRET * fretWidth, 0, fretWidth, h);
       
       // Hit line (center of hit fret)
-      ctx.strokeStyle = '#fb4';
+      ctx.strokeStyle = '#0096ff';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(hitLineX, 0);
@@ -1043,8 +1044,8 @@
           ctx.shadowBlur = 20;
         } else {
           ctx.fillStyle = '#222';
-          ctx.strokeStyle = '#fb4';
-          ctx.shadowColor = '#fb4';
+          ctx.strokeStyle = '#0096ff';
+          ctx.shadowColor = '#0096ff';
           ctx.shadowBlur = 10;
         }
         
